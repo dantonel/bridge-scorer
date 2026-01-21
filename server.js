@@ -1,4 +1,7 @@
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
+
+// Create Redis client
+const redis = new Redis(process.env.REDIS_URL);
 
 // Helper function to send JSON response
 function sendJSON(res, statusCode, data) {
@@ -53,9 +56,10 @@ export default async (req, res) => {
     // GET /api/games/:gameId
     if (req.method === 'GET' && url.pathname.startsWith('/api/games/')) {
       const gameId = url.pathname.split('/')[3];
-      const game = await kv.get(`game:${gameId}`);
+      const gameJson = await redis.get(`game:${gameId}`);
       
-      if (game) {
+      if (gameJson) {
+        const game = JSON.parse(gameJson);
         sendJSON(res, 200, game);
       } else {
         sendJSON(res, 404, { error: 'Game not found' });
@@ -72,9 +76,9 @@ export default async (req, res) => {
         return;
       }
       
-      await kv.set(`game:${gameData.gameId}`, gameData);
+      await redis.set(`game:${gameData.gameId}`, JSON.stringify(gameData));
       // Set expiration to 24 hours (86400 seconds)
-      await kv.expire(`game:${gameData.gameId}`, 86400);
+      await redis.expire(`game:${gameData.gameId}`, 86400);
       sendJSON(res, 201, gameData);
       return;
     }
@@ -89,18 +93,20 @@ export default async (req, res) => {
         return;
       }
       
-      const existingGame = await kv.get(`game:${gameId}`);
+      const existingJson = await redis.get(`game:${gameId}`);
       
-      if (!existingGame) {
+      if (!existingJson) {
         sendJSON(res, 404, { error: 'Game not found' });
         return;
       }
       
+      const existingGame = JSON.parse(existingJson);
+      
       // Deep merge the updates into existing game
       const updatedGame = deepMerge(existingGame, updates);
-      await kv.set(`game:${gameId}`, updatedGame);
+      await redis.set(`game:${gameId}`, JSON.stringify(updatedGame));
       // Refresh expiration to 24 hours
-      await kv.expire(`game:${gameId}`, 86400);
+      await redis.expire(`game:${gameId}`, 86400);
       sendJSON(res, 200, updatedGame);
       return;
     }
@@ -115,9 +121,9 @@ export default async (req, res) => {
         return;
       }
       
-      await kv.set(`game:${gameId}`, gameData);
+      await redis.set(`game:${gameId}`, JSON.stringify(gameData));
       // Refresh expiration to 24 hours
-      await kv.expire(`game:${gameId}`, 86400);
+      await redis.expire(`game:${gameId}`, 86400);
       sendJSON(res, 200, gameData);
       return;
     }
