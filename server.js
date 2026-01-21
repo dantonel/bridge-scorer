@@ -1,5 +1,4 @@
-// In-memory database (note: this will reset on each deployment or cold start)
-const games = new Map();
+import { kv } from '@vercel/kv';
 
 // Helper function to send JSON response
 function sendJSON(res, statusCode, data) {
@@ -41,7 +40,7 @@ function isObject(item) {
 }
 
 // Serverless function handler for Vercel
-module.exports = async (req, res) => {
+export default async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -58,7 +57,7 @@ module.exports = async (req, res) => {
   // GET /api/games/:gameId
   if (req.method === 'GET' && url.pathname.startsWith('/api/games/')) {
     const gameId = url.pathname.split('/')[3];
-    const game = games.get(gameId);
+    const game = await kv.get(`game:${gameId}`);
     
     if (game) {
       sendJSON(res, 200, game);
@@ -72,7 +71,9 @@ module.exports = async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/games') {
     try {
       const gameData = parseBody(req);
-      games.set(gameData.gameId, gameData);
+      await kv.set(`game:${gameData.gameId}`, gameData);
+      // Set expiration to 24 hours (86400 seconds)
+      await kv.expire(`game:${gameData.gameId}`, 86400);
       sendJSON(res, 201, gameData);
     } catch (e) {
       sendJSON(res, 400, { error: 'Invalid request body' });
@@ -85,7 +86,7 @@ module.exports = async (req, res) => {
     const gameId = url.pathname.split('/')[3];
     try {
       const updates = parseBody(req);
-      const existingGame = games.get(gameId);
+      const existingGame = await kv.get(`game:${gameId}`);
       
       if (!existingGame) {
         sendJSON(res, 404, { error: 'Game not found' });
@@ -94,7 +95,9 @@ module.exports = async (req, res) => {
       
       // Deep merge the updates into existing game
       const updatedGame = deepMerge(existingGame, updates);
-      games.set(gameId, updatedGame);
+      await kv.set(`game:${gameId}`, updatedGame);
+      // Refresh expiration to 24 hours
+      await kv.expire(`game:${gameId}`, 86400);
       sendJSON(res, 200, updatedGame);
     } catch (e) {
       sendJSON(res, 400, { error: 'Invalid request body' });
@@ -107,7 +110,9 @@ module.exports = async (req, res) => {
     const gameId = url.pathname.split('/')[3];
     try {
       const gameData = parseBody(req);
-      games.set(gameId, gameData);
+      await kv.set(`game:${gameId}`, gameData);
+      // Refresh expiration to 24 hours
+      await kv.expire(`game:${gameId}`, 86400);
       sendJSON(res, 200, gameData);
     } catch (e) {
       sendJSON(res, 400, { error: 'Invalid request body' });

@@ -2,11 +2,14 @@
   "name": "bridge-scorer",
   "version": "1.0.0",
   "description": "Bridge Individual IMP Scoring App",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@vercel/kv": "^3.0.0"
+  },
   "engines": {
     "node": "24.x"
   }
