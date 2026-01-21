@@ -1,7 +1,19 @@
-import Redis from 'ioredis';
+import { createClient } from 'redis';
 
-// Create Redis client
-const redis = new Redis(process.env.REDIS_URL);
+let redis = null;
+
+async function getRedisClient() {
+  if (!redis) {
+    redis = createClient({
+      url: process.env.REDIS_URL
+    });
+    
+    redis.on('error', (err) => console.error('Redis Client Error', err));
+    
+    await redis.connect();
+  }
+  return redis;
+}
 
 // Helper function to send JSON response
 function sendJSON(res, statusCode, data) {
@@ -38,7 +50,7 @@ function isObject(item) {
 }
 
 // Serverless function handler for Vercel
-export default async (req, res) => {
+export default async function handler(req, res) {
   try {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -51,12 +63,13 @@ export default async (req, res) => {
       return;
     }
 
+    const client = await getRedisClient();
     const url = new URL(req.url, `https://${req.headers.host}`);
     
     // GET /api/games/:gameId
     if (req.method === 'GET' && url.pathname.startsWith('/api/games/')) {
       const gameId = url.pathname.split('/')[3];
-      const gameJson = await redis.get(`game:${gameId}`);
+      const gameJson = await client.get(`game:${gameId}`);
       
       if (gameJson) {
         const game = JSON.parse(gameJson);
@@ -76,9 +89,9 @@ export default async (req, res) => {
         return;
       }
       
-      await redis.set(`game:${gameData.gameId}`, JSON.stringify(gameData));
-      // Set expiration to 24 hours (86400 seconds)
-      await redis.expire(`game:${gameData.gameId}`, 86400);
+      await client.set(`game:${gameData.gameId}`, JSON.stringify(gameData), {
+        EX: 86400 // Expire after 24 hours
+      });
       sendJSON(res, 201, gameData);
       return;
     }
@@ -93,7 +106,7 @@ export default async (req, res) => {
         return;
       }
       
-      const existingJson = await redis.get(`game:${gameId}`);
+      const existingJson = await client.get(`game:${gameId}`);
       
       if (!existingJson) {
         sendJSON(res, 404, { error: 'Game not found' });
@@ -104,9 +117,9 @@ export default async (req, res) => {
       
       // Deep merge the updates into existing game
       const updatedGame = deepMerge(existingGame, updates);
-      await redis.set(`game:${gameId}`, JSON.stringify(updatedGame));
-      // Refresh expiration to 24 hours
-      await redis.expire(`game:${gameId}`, 86400);
+      await client.set(`game:${gameId}`, JSON.stringify(updatedGame), {
+        EX: 86400 // Refresh expiration to 24 hours
+      });
       sendJSON(res, 200, updatedGame);
       return;
     }
@@ -121,9 +134,9 @@ export default async (req, res) => {
         return;
       }
       
-      await redis.set(`game:${gameId}`, JSON.stringify(gameData));
-      // Refresh expiration to 24 hours
-      await redis.expire(`game:${gameId}`, 86400);
+      await client.set(`game:${gameId}`, JSON.stringify(gameData), {
+        EX: 86400 // Refresh expiration to 24 hours
+      });
       sendJSON(res, 200, gameData);
       return;
     }
@@ -132,6 +145,9 @@ export default async (req, res) => {
     res.status(404).json({ error: 'Not Found' });
   } catch (error) {
     console.error('Server error:', error);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message
+    });
   }
-};
+}
