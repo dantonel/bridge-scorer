@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bridge Scorer - Multi-Device</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Crimson+Text:wght@400;600&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Crimson Text', serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e8e8e8;
+    }
+
+    .app-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+
+    .setup-container {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .app-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #ffd700;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      margin-bottom: 0.5rem;
+      letter-spacing: 2px;
+    }
+
+    .app-subtitle {
+      font-size: 1.1rem;
+      color: #b8b8d8;
+      font-weight: 400;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .divider {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ffd700, transparent);
+      margin: 1.5rem 0;
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .primary-button, .secondary-button, .submit-score-btn, .view-results-btn {
+      width: 100%;
+      padding: 1.25rem 2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      font-family: 'Playfair Display', serif;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      letter-spacing: 1px;
+    }
+
+    .primary-button {
+      background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+      color: #1a1a2e;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+    }
+
+    .primary-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+    }
+
+    .secondary-button {
+      background: rgba(255, 215, 0, 0.1);
+      border: 2px solid rgba(255, 215, 0, 0.4);
+      color: #ffd700;
+    }
+
+    .secondary-button:hover {
+      background: rgba(255, 215, 0, 0.2);
+      border-color: #ffd700;
+      transform: translateY(-2px);
+    }
+
+    .config-section {
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: #ffd700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .boards-selector {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+
+    .board-option, .table-option {
+      padding: 0.75rem 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      border-radius: 8px;
+      color: #e8e8e8;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.1rem;
+      font-family: 'Crimson Text', serif;
+      font-weight: 600;
+    }
+
+    .board-option:hover, .table-option:hover {
+      background: rgba(255, 215, 0, 0.1);
+      border-color: rgba(255, 215, 0, 0.5);
+    }
+
+    .board-option.active, .table-option.active {
+      background: rgba(255, 215, 0, 0.2);
+      border-color: #ffd700;
+      color: #ffd700;
+    }
+
+    .game-id-display {
+      text-align: center;
+      padding: 2rem;
+      background: rgba(255, 215, 0, 0.05);
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .game-id-label {
+      font-size: 1rem;
+      color: #b8b8d8;
+      margin-bottom: 0.5rem;
+    }
+
+    .game-id-code {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #ffd700;
+      letter-spacing: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .game-id-instruction {
+      font-size: 1rem;
+      color: #e8e8e8;
+      line-height: 1.6;
+    }
+
+    .info-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .info-box p {
+      margin-bottom: 0.5rem;
+      line-height: 1.6;
+    }
+
+    .info-box strong {
+      color: #ffd700;
+    }
+
+    .form-section {
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 1rem;
+      color: #b8b8d8;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 215, 0, 0.2);
+      border-radius: 8px;
+      color: #e8e8e8;
+      font-size: 1.1rem;
+      font-family: 'Crimson Text', serif;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: #ffd700;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .form-select option {
+      background: #1a1a2e;
+      color: #e8e8e8;
+    }
+
+    .large-input {
+      font-size: 1.5rem;
+      text-align: center;
+      letter-spacing: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .table-selector {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .table-option {
+      flex: 1;
+    }
+
+    .table-option.locked {
+      opacity: 0.5;
+      cursor: not-allowed;
+      border-color: rgba(244, 67, 54, 0.3);
+    }
+
+    .table-option.locked:hover {
+      background: rgba(244, 67, 54, 0.1);
+      border-color: rgba(244, 67, 54, 0.5);
+      transform: none;
+    }
+
+    .players-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .player-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .position-label-input {
+      font-size: 0.9rem;
+      color: #ffd700;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .game-container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .round-header {
+      background: rgba(255, 215, 0, 0.1);
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .round-info {
+      text-align: center;
+    }
+
+    .game-id-small {
+      font-size: 0.9rem;
+      color: #b8b8d8;
+      margin-bottom: 0.5rem;
+    }
+
+    .round-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: #ffd700;
+      font-weight: 600;
+    }
+
+    .table-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 215, 0, 0.2);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .table-header {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: #ffd700;
+      margin-bottom: 1rem;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .table-layout {
+      position: relative;
+      aspect-ratio: 1;
+      margin: 1.5rem auto;
+      max-width: 280px;
+    }
+
+    .player-badge {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .player-badge.north {
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .player-badge.south {
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .player-badge.east {
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .player-badge.west {
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .position-label {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.75rem;
+      color: #ffd700;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      letter-spacing: 1px;
+    }
+
+    .player-name {
+      color: #e8e8e8;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+
+    .board-scoring {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    .scoring-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      color: #ffd700;
+      margin-bottom: 1rem;
+    }
+
+    .score-form {
+      display: grid;
+      gap: 1rem;
+    }
+
+    /* Button groups for score entry */
+    .board-buttons, .declarer-buttons, .level-buttons, .strain-buttons, .double-buttons, .tricks-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .board-btn, .declarer-btn, .level-btn, .strain-btn, .double-btn, .tricks-btn {
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 215, 0, 0.2);
+      border-radius: 8px;
+      color: #e8e8e8;
+      font-size: 1rem;
+      font-family: 'Crimson Text', serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 600;
+    }
+
+    .board-btn:hover, .declarer-btn:hover, .level-btn:hover, .strain-btn:hover, .double-btn:hover, .tricks-btn:hover {
+      background: rgba(255, 215, 0, 0.1);
+      border-color: rgba(255, 215, 0, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .board-btn.selected, .declarer-btn.selected, .level-btn.selected, .strain-btn.selected, .double-btn.selected, .tricks-btn.selected {
+      background: rgba(255, 215, 0, 0.25);
+      border-color: #ffd700;
+      color: #ffd700;
+    }
+
+    .board-btn.recorded {
+      background: rgba(76, 175, 80, 0.1);
+      border-color: rgba(76, 175, 80, 0.4);
+    }
+
+    .board-btn.recorded.selected {
+      background: rgba(76, 175, 80, 0.25);
+      border-color: #4caf50;
+      color: #4caf50;
+    }
+
+    .board-btn {
+      flex: 1;
+      min-width: 60px;
+    }
+
+    .declarer-btn {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .level-btn {
+      width: 50px;
+      height: 50px;
+      font-size: 1.3rem;
+    }
+
+    .strain-btn {
+      width: 60px;
+      height: 60px;
+      font-size: 2rem;
+      padding: 0.5rem;
+    }
+
+    .strain-btn.clubs {
+      color: #4caf50;
+    }
+
+    .strain-btn.clubs.selected {
+      color: #4caf50;
+      border-color: #4caf50;
+      background: rgba(76, 175, 80, 0.2);
+    }
+
+    .strain-btn.diamonds {
+      color: #ff9800;
+    }
+
+    .strain-btn.diamonds.selected {
+      color: #ff9800;
+      border-color: #ff9800;
+      background: rgba(255, 152, 0, 0.2);
+    }
+
+    .strain-btn.hearts {
+      color: #f44336;
+    }
+
+    .strain-btn.hearts.selected {
+      color: #f44336;
+      border-color: #f44336;
+      background: rgba(244, 67, 54, 0.2);
+    }
+
+    .strain-btn.spades {
+      color: #2196f3;
+    }
+
+    .strain-btn.spades.selected {
+      color: #2196f3;
+      border-color: #2196f3;
+      background: rgba(33, 150, 243, 0.2);
+    }
+
+    .strain-btn.notrump {
+      font-size: 1.2rem;
+    }
+
+    .double-btn {
+      flex: 1;
+    }
+
+    .tricks-btn {
+      width: 45px;
+      height: 45px;
+      padding: 0.5rem;
+    }
+
+    .submit-score-btn {
+      padding: 1rem 1.5rem;
+      font-size: 1.1rem;
+      background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+      color: #1a1a2e;
+    }
+
+    .submit-score-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    }
+
+    .recorded-scores {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    .recorded-title {
+      font-size: 1rem;
+      color: #ffd700;
+      margin-bottom: 0.75rem;
+      font-weight: 600;
+    }
+
+    .score-item {
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .round-complete-banner {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      background: rgba(76, 175, 80, 0.2);
+      border: 2px solid rgba(76, 175, 80, 0.5);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .round-complete-banner p {
+      color: #4caf50;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .view-results-btn {
+      padding: 0.875rem 1.5rem;
+      font-size: 1rem;
+      background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+      color: white;
+    }
+
+    .view-results-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+    }
+
+    .results-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .results-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #ffd700;
+      margin-bottom: 0.5rem;
+    }
+
+    .leaderboard-card, .movement-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 215, 0, 0.2);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .leaderboard-title, .movement-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: #ffd700;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+
+    .movement-title {
+      font-size: 1.3rem;
+    }
+
+    .leaderboard-list {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 215, 0, 0.2);
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .leaderboard-item.rank-1 {
+      border-color: #ffd700;
+      background: rgba(255, 215, 0, 0.1);
+    }
+
+    .leaderboard-item.rank-2 {
+      border-color: #c0c0c0;
+      background: rgba(192, 192, 192, 0.05);
+    }
+
+    .leaderboard-item.rank-3 {
+      border-color: #cd7f32;
+      background: rgba(205, 127, 50, 0.05);
+    }
+
+    .rank-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 215, 0, 0.2);
+      border: 2px solid rgba(255, 215, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #ffd700;
+      flex-shrink: 0;
+    }
+
+    .rank-1 .rank-badge {
+      background: rgba(255, 215, 0, 0.3);
+      border-color: #ffd700;
+    }
+
+    .player-info {
+      flex: 1;
+    }
+
+    .player-name-lb {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #e8e8e8;
+    }
+
+    .imps-score {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .imps-score.positive {
+      color: #4caf50;
+    }
+
+    .imps-score.negative {
+      color: #f44336;
+    }
+
+    .movement-list {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .movement-item {
+      padding: 0.875rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .app-container {
+        padding: 1rem 0.5rem;
+      }
+
+      .setup-container, .table-card {
+        padding: 1.5rem 1rem;
+      }
+
+      .app-title {
+        font-size: 2rem;
+      }
+
+      .game-id-code {
+        font-size: 2rem;
+        letter-spacing: 4px;
+      }
+
+      .table-layout {
+        max-width: 220px;
+      }
+
+      .player-badge {
+        padding: 0.5rem 0.75rem;
+      }
+
+      .player-name {
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app-container"></div>
+
+  <script>
+    const API_URL = 'http://localhost:3001/api';
+    
+    // State
+    let state = {
+      screen: 'start',
+      gameId: '',
+      tableNumber: null,
+      sessionId: Math.random().toString(36).substring(2, 15), // Unique session ID for this browser tab
+      boardsPerRound: 4,
+      currentRound: 1,
+      tablePlayers: { north: '', south: '', east: '', west: '' },
+      gameData: null,
+      joinGameIdInput: '',
+      joinTableInput: '',
+      scoreForm: { 
+        board: 1, 
+        level: null,
+        strain: null,
+        double: '',
+        declarer: '', 
+        tricksTaken: null
+      }
+    };
+
+    // Movement pattern
+    // 8-player individual movement - players numbered 1-8
+    // Movement pattern from bridge book:
+    // Table 1: N stays, S→2E, E→1S, W→2W
+    // Table 2: N→1E, S→2N, E→1W, W→2S
+    const movement = {
+      table1: {
+        north: { table: 1, position: 'north' },   // N stays put
+        south: { table: 2, position: 'east' },    // S → 2E
+        east: { table: 1, position: 'south' },    // E → 1S
+        west: { table: 2, position: 'west' }      // W → 2W
+      },
+      table2: {
+        north: { table: 1, position: 'east' },    // N → 1E
+        south: { table: 2, position: 'north' },   // S → 2N
+        east: { table: 1, position: 'west' },     // E → 1W
+        west: { table: 2, position: 'south' }     // W → 2S
+      }
+    };
+
+    // Auto-sync interval
+    let syncInterval = null;
+    let isUserTyping = false;
+    let typingTimeout = null;
+
+    // Track when user is typing
+    function onUserInput() {
+      isUserTyping = true;
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        isUserTyping = false;
+      }, 3000); // Consider user stopped typing after 3 seconds of inactivity
+    }
+
+    // API Functions
+    async function createGame() {
+      const gameId = generateGameId();
+      const gameData = {
+        gameId,
+        boardsPerRound: state.boardsPerRound,
+        currentRound: 1,
+        tables: {
+          1: { players: {}, scores: {}, sessionId: null },
+          2: { players: {}, scores: {}, sessionId: null }
+        },
+        created: Date.now()
+      };
+
+      const response = await fetch(`${API_URL}/games`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(gameData)
+      });
+
+      state.gameId = gameId;
+      state.gameData = gameData;
+      state.screen = 'gameCreated';
+      render();
+    }
+
+    async function joinGame() {
+      if (!state.joinGameIdInput || !state.joinTableInput) {
+        alert('Please enter both Game ID and Table Number');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/games/${state.joinGameIdInput.toUpperCase()}`);
+        if (response.ok) {
+          const data = await response.json();
+          
+          console.log('=== JOIN ATTEMPT ===');
+          console.log('Attempting to join table', state.joinTableInput);
+          console.log('Current sessionId on server:', data.tables[state.joinTableInput]?.sessionId);
+          console.log('My sessionId:', state.sessionId);
+          
+          // Check if this table is already locked by another session
+          const tableData = data.tables[state.joinTableInput];
+          if (tableData.sessionId && tableData.sessionId !== state.sessionId) {
+            console.log('❌ BLOCKED: Table is locked by another session');
+            alert(`Table ${state.joinTableInput} is already in use by another device. Please choose a different table or wait for the other device to leave.`);
+            return;
+          }
+          
+          console.log('✓ Table is available, proceeding to lock');
+          
+          state.gameId = state.joinGameIdInput.toUpperCase();
+          state.tableNumber = parseInt(state.joinTableInput);
+          state.gameData = data;
+          state.boardsPerRound = data.boardsPerRound;
+          state.currentRound = data.currentRound;
+          
+          // Initialize tablePlayers with empty strings for all positions
+          state.tablePlayers = {
+            north: data.tables[state.joinTableInput]?.players?.north || '',
+            south: data.tables[state.joinTableInput]?.players?.south || '',
+            east: data.tables[state.joinTableInput]?.players?.east || '',
+            west: data.tables[state.joinTableInput]?.players?.west || ''
+          };
+          
+          // Lock this table immediately by setting the sessionId
+          const lockUpdate = {
+            tables: {
+              [state.tableNumber]: {
+                sessionId: state.sessionId
+              }
+            }
+          };
+          await fetch(`${API_URL}/games/${state.gameId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(lockUpdate)
+          });
+          
+          // Verify we actually got the lock (detect race condition)
+          console.log('Verifying lock...');
+          const verifyResponse = await fetch(`${API_URL}/games/${state.gameId}`);
+          const verifyData = await verifyResponse.json();
+          console.log('After PATCH, sessionId on server:', verifyData.tables[state.tableNumber].sessionId);
+          console.log('My sessionId:', state.sessionId);
+          if (verifyData.tables[state.tableNumber].sessionId !== state.sessionId) {
+            console.log('VERIFICATION FAILED - someone else got the lock!');
+            alert(`Table ${state.tableNumber} was just taken by another device. Please try again.`);
+            return;
+          }
+          console.log('VERIFICATION PASSED - I have the lock');
+          
+          state.screen = 'tableSetup';
+          startSync();
+          render();
+        } else {
+          alert('Game not found. Please check the Game ID.');
+        }
+      } catch (error) {
+        alert('Error joining game: ' + error.message);
+      }
+    }
+
+    async function saveTablePlayers() {
+      if (Object.values(state.tablePlayers).some(name => !name.trim())) {
+        alert('Please enter all player names');
+        return;
+      }
+
+      // Build partial update for just this table's data
+      const partialUpdate = {
+        tables: {
+          [state.tableNumber]: {
+            players: state.tablePlayers,
+            sessionId: state.sessionId
+          }
+        }
+      };
+      
+      await fetch(`${API_URL}/games/${state.gameId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partialUpdate)
+      });
+
+      // Fetch latest game data
+      const response = await fetch(`${API_URL}/games/${state.gameId}`);
+      state.gameData = await response.json();
+      state.screen = 'playing';
+      render();
+    }
+
+    async function recordScore(e) {
+      e.preventDefault();
+      
+      if (!state.scoreForm.level || !state.scoreForm.strain || !state.scoreForm.declarer || state.scoreForm.tricksTaken === null) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      const contract = buildContractString();
+      const score = calculateScore(
+        state.scoreForm.level, 
+        state.scoreForm.strain, 
+        state.scoreForm.double, 
+        state.scoreForm.declarer, 
+        state.scoreForm.tricksTaken,
+        state.scoreForm.board
+      );
+
+      // Build partial update for just this table's score
+      const partialUpdate = {
+        tables: {
+          [state.tableNumber]: {
+            scores: {
+              [state.currentRound]: {
+                [state.scoreForm.board]: {
+                  contract: contract,
+                  declarer: state.scoreForm.declarer,
+                  score: score,
+                  board: parseInt(state.scoreForm.board),
+                  round: state.currentRound
+                }
+              }
+            }
+          }
+        }
+      };
+      
+      // Use PATCH to merge this score without overwriting other table's data
+      await fetch(`${API_URL}/games/${state.gameId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partialUpdate)
+      });
+
+      // Fetch the latest game state to check if round is complete
+      const response = await fetch(`${API_URL}/games/${state.gameId}`);
+      const updatedGameData = await response.json();
+      state.gameData = updatedGameData;
+      
+      // Check if THIS table has completed all boards for this round
+      const thisTableScores = updatedGameData.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
+      let thisTableComplete = true;
+      for (let i = 1; i <= state.boardsPerRound; i++) {
+        const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+        if (!thisTableScores[boardNum]) {
+          thisTableComplete = false;
+          break;
+        }
+      }
+      
+      // If this table completed all boards, go to waiting screen
+      if (thisTableComplete) {
+        state.screen = 'roundWaiting';
+        render();
+        return;
+      }
+      
+      // Otherwise, just advance to next board in current round
+      state.scoreForm = {
+        board: Math.min(parseInt(state.scoreForm.board) + 1, state.boardsPerRound * state.currentRound),
+        level: null,
+        strain: null,
+        double: '',
+        declarer: '',
+        tricksTaken: null
+      };
+      render();
+    }
+
+    async function loadGameData() {
+      if (!state.gameId) return;
+      
+      // Don't sync while user is actively typing
+      if (isUserTyping) return;
+      
+      try {
+        const response = await fetch(`${API_URL}/games/${state.gameId}`);
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check if this session has been kicked out (another device took over)
+          if (state.tableNumber && data.tables[state.tableNumber].sessionId && 
+              data.tables[state.tableNumber].sessionId !== state.sessionId) {
+            alert('This table has been taken over by another device. You have been disconnected.');
+            stopSync();
+            state.screen = 'start';
+            state.gameId = '';
+            state.tableNumber = null;
+            render();
+            return;
+          }
+          
+          // Only update if data has actually changed
+          if (JSON.stringify(data) !== JSON.stringify(state.gameData)) {
+            state.gameData = data;
+            // Only update currentRound if we're not on the round end or waiting screens
+            // (to prevent confusion when the other table finishes and auto-advances)
+            if (state.screen !== 'roundEnd' && state.screen !== 'roundWaiting') {
+              state.currentRound = data.currentRound;
+            }
+            render();
+          }
+        }
+      } catch (error) {
+        console.log('Error loading game data:', error);
+      }
+    }
+
+    function startSync() {
+      if (syncInterval) clearInterval(syncInterval);
+      syncInterval = setInterval(loadGameData, 2000);
+    }
+
+    function stopSync() {
+      if (syncInterval) {
+        clearInterval(syncInterval);
+        syncInterval = null;
+      }
+    }
+
+    async function deleteScore(boardNumber) {
+      if (!confirm(`Delete the score for Board ${boardNumber}? You'll be able to re-enter it.`)) {
+        return;
+      }
+      
+      try {
+        // Build update to remove this specific board's score
+        const partialUpdate = {
+          tables: {
+            [state.tableNumber]: {
+              scores: {
+                [state.currentRound]: {
+                  [boardNumber]: null  // Setting to null will delete it
+                }
+              }
+            }
+          }
+        };
+        
+        // Send PATCH to delete the score
+        await fetch(`${API_URL}/games/${state.gameId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(partialUpdate)
+        });
+        
+        // Fetch updated game data
+        const response = await fetch(`${API_URL}/games/${state.gameId}`);
+        state.gameData = await response.json();
+        
+        // Set up the score form for this board and go back to playing
+        state.scoreForm = {
+          board: boardNumber,
+          level: null,
+          strain: null,
+          double: '',
+          declarer: '',
+          tricksTaken: null
+        };
+        
+        state.screen = 'playing';
+        render();
+      } catch (error) {
+        alert('Failed to delete score: ' + error.message);
+      }
+    }
+
+    async function advanceToNextRound() {
+      // Sync with backend to get the latest currentRound
+      const response = await fetch(`${API_URL}/games/${state.gameId}`);
+      let latestData = await response.json();
+      
+      // Check if both tables completed this round
+      const table1Scores = latestData.tables[1]?.scores?.[state.currentRound] || {};
+      const table2Scores = latestData.tables[2]?.scores?.[state.currentRound] || {};
+      let bothTablesComplete = true;
+      for (let i = 1; i <= state.boardsPerRound; i++) {
+        const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+        if (!table1Scores[boardNum] || !table2Scores[boardNum]) {
+          bothTablesComplete = false;
+          break;
+        }
+      }
+      
+      // If both tables completed and we haven't advanced yet, advance the round
+      if (bothTablesComplete && latestData.currentRound === state.currentRound && state.currentRound < 7) {
+        const roundUpdate = { currentRound: state.currentRound + 1 };
+        await fetch(`${API_URL}/games/${state.gameId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(roundUpdate)
+        });
+        
+        // Fetch again to get updated round
+        const roundResponse = await fetch(`${API_URL}/games/${state.gameId}`);
+        latestData = await roundResponse.json();
+      }
+      
+      state.currentRound = latestData.currentRound;
+      state.gameData = latestData;
+      
+      // Navigate to the playing screen for the current round
+      const startBoard = (state.currentRound - 1) * state.boardsPerRound + 1;
+      state.scoreForm = { 
+        board: startBoard, 
+        level: null,
+        strain: null,
+        double: '',
+        declarer: '', 
+        tricksTaken: null
+      };
+      state.screen = 'playing';
+      render();
+    }
+
+    function generateGameId() {
+      return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    function buildContractString() {
+      if (!state.scoreForm.level || !state.scoreForm.strain) return '';
+      return `${state.scoreForm.level}${state.scoreForm.strain}${state.scoreForm.double}`;
+    }
+
+    function calculateScore(level, strain, double, declarer, tricksTaken, boardNumber) {
+      // Calculate bridge score based on contract and result
+      const contract = parseInt(level);
+      const tricksNeeded = 6 + contract;
+      const tricksDiff = tricksTaken - tricksNeeded;
+      
+      // Determine vulnerability based on board number (pattern repeats every 16 boards)
+      // Official duplicate bridge vulnerability pattern:
+      const boardMod16 = ((boardNumber - 1) % 16) + 1; // Convert to 1-16 range
+      let vulnPattern;
+      
+      if ([1, 8, 11, 14].includes(boardMod16)) {
+        vulnPattern = 'none';
+      } else if ([2, 5, 12, 15].includes(boardMod16)) {
+        vulnPattern = 'ns';
+      } else if ([3, 6, 9, 16].includes(boardMod16)) {
+        vulnPattern = 'ew';
+      } else if ([4, 7, 10, 13].includes(boardMod16)) {
+        vulnPattern = 'both';
+      }
+      
+      // Determine if declarer's side is vulnerable
+      const declarerIsNS = (declarer === 'north' || declarer === 'south');
+      const vulnerable = (vulnPattern === 'both') || 
+                        (vulnPattern === 'ns' && declarerIsNS) ||
+                        (vulnPattern === 'ew' && !declarerIsNS);
+      
+      if (tricksDiff < 0) {
+        // Contract failed (went down)
+        const undertricks = Math.abs(tricksDiff);
+        let penalty = 0;
+        
+        if (double === '') {
+          penalty = vulnerable ? undertricks * 100 : undertricks * 50;
+        } else if (double === 'X') {
+          // Doubled undertricks
+          if (vulnerable) {
+            penalty = undertricks === 1 ? 200 : 200 + (undertricks - 1) * 300;
+          } else {
+            penalty = undertricks === 1 ? 100 : undertricks === 2 ? 300 : 300 + (undertricks - 2) * 300;
+          }
+        } else if (double === 'XX') {
+          // Redoubled undertricks
+          if (vulnerable) {
+            penalty = undertricks === 1 ? 400 : 400 + (undertricks - 1) * 600;
+          } else {
+            penalty = undertricks === 1 ? 200 : undertricks === 2 ? 600 : 600 + (undertricks - 2) * 600;
+          }
+        }
+        
+        // Return negative for declarer, positive for defenders
+        // From NS perspective: if NS declared and went down, they get negative
+        // If EW declared and went down, NS gets positive (defenders' score)
+        return declarerIsNS ? -penalty : penalty;
+      } else {
+        // Contract made
+        let score = 0;
+        
+        // Base trick score
+        let baseScore = 0;
+        if (strain === 'NT') {
+          baseScore = 40 + (contract - 1) * 30;
+        } else if (strain === 'H' || strain === 'S') {
+          baseScore = contract * 30;
+        } else {
+          baseScore = contract * 20;
+        }
+        
+        if (double === 'X') baseScore *= 2;
+        if (double === 'XX') baseScore *= 4;
+        
+        score += baseScore;
+        
+        // Game bonus
+        if (baseScore >= 100) {
+          score += vulnerable ? 500 : 300;
+        } else {
+          score += 50;
+        }
+        
+        // Slam bonus
+        if (contract === 6) {
+          score += vulnerable ? 750 : 500;
+        } else if (contract === 7) {
+          score += vulnerable ? 1500 : 1000;
+        }
+        
+        // Double/redouble bonus
+        if (double === 'X') score += 50;
+        if (double === 'XX') score += 100;
+        
+        // Overtrick bonus
+        if (tricksDiff > 0) {
+          let overtrickValue = 0;
+          if (double === '') {
+            overtrickValue = (strain === 'H' || strain === 'S' || strain === 'NT') ? 30 : 20;
+          } else if (double === 'X') {
+            overtrickValue = vulnerable ? 200 : 100;
+          } else if (double === 'XX') {
+            overtrickValue = vulnerable ? 400 : 200;
+          }
+          score += tricksDiff * overtrickValue;
+        }
+        
+        // Return positive for declarer's side, negative for opponents
+        // From NS perspective: if NS made contract, they get positive
+        // If EW made contract, NS gets negative (opponents' score)
+        return declarerIsNS ? score : -score;
+      }
+    }
+
+    function getCurrentPlayerPositions() {
+      if (!state.tableNumber || !state.gameData) return state.tablePlayers;
+      
+      // If we're in round 1, return the original positions
+      if (state.currentRound === 1) {
+        return state.gameData.tables[state.tableNumber].players;
+      }
+      
+      // Track ALL 8 players through the movement
+      // Start with the original seating from round 1
+      const table1Original = state.gameData.tables[1]?.players || {};
+      const table2Original = state.gameData.tables[2]?.players || {};
+      
+      // Create a global player tracking object: { playerName: { table, position } }
+      let playerLocations = {
+        [table1Original.north]: { table: 1, position: 'north' },
+        [table1Original.south]: { table: 1, position: 'south' },
+        [table1Original.east]: { table: 1, position: 'east' },
+        [table1Original.west]: { table: 1, position: 'west' },
+        [table2Original.north]: { table: 2, position: 'north' },
+        [table2Original.south]: { table: 2, position: 'south' },
+        [table2Original.east]: { table: 2, position: 'east' },
+        [table2Original.west]: { table: 2, position: 'west' }
+      };
+      
+      // Apply movement for each round
+      for (let round = 1; round < state.currentRound; round++) {
+        const newPlayerLocations = {};
+        
+        // For each player, look up where they currently are and where they move to
+        Object.keys(playerLocations).forEach(playerName => {
+          if (!playerName) return; // Skip empty players
+          
+          const currentLocation = playerLocations[playerName];
+          const tableKey = `table${currentLocation.table}`;
+          const destination = movement[tableKey][currentLocation.position];
+          
+          newPlayerLocations[playerName] = destination;
+        });
+        
+        playerLocations = newPlayerLocations;
+      }
+      
+      // Build the result for the current table
+      const result = { north: '', south: '', east: '', west: '' };
+      Object.keys(playerLocations).forEach(playerName => {
+        const location = playerLocations[playerName];
+        if (location.table === state.tableNumber) {
+          result[location.position] = playerName;
+        }
+      });
+      
+      return result;
+    }
+
+    function getBoardNumbersForRound(round, boardsPerRound) {
+      // Board numbers increment: Round 1 = 1-4, Round 2 = 5-8, etc.
+      const startBoard = (round - 1) * boardsPerRound + 1;
+      return Array.from({ length: boardsPerRound }, (_, i) => startBoard + i);
+    }
+
+    function checkRoundComplete() {
+      if (!state.gameData) return false;
+      
+      const table1Scores = state.gameData.tables[1]?.scores?.[state.currentRound] || {};
+      const table2Scores = state.gameData.tables[2]?.scores?.[state.currentRound] || {};
+      
+      for (let i = 1; i <= state.boardsPerRound; i++) {
+        if (!table1Scores[i] || !table2Scores[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function calculateIMPs(scoreDiff) {
+      const impTable = [
+        [10, 0], [40, 1], [80, 2], [120, 3], [160, 4],
+        [210, 5], [260, 6], [310, 7], [360, 8], [420, 9],
+        [490, 10], [590, 11], [740, 12], [890, 13], [1090, 14],
+        [1290, 15], [1490, 16], [1740, 17], [1990, 18], [2240, 19],
+        [2490, 20], [2990, 21], [3490, 22], [3990, 23], [Infinity, 24]
+      ];
+      
+      const absDiff = Math.abs(scoreDiff);
+      for (let [threshold, imps] of impTable) {
+        if (absDiff < threshold) {
+          return scoreDiff >= 0 ? imps : -imps;
+        }
+      }
+      return 0;
+    }
+
+    function calculateLeaderboard() {
+      if (!state.gameData) return [];
+
+      const playerIMPs = {};
+      
+      // Initialize all players with 0 IMPs
+      for (let tableNum = 1; tableNum <= 2; tableNum++) {
+        const players = state.gameData.tables[tableNum]?.players || {};
+        Object.values(players).forEach(playerName => {
+          if (playerName && !playerIMPs[playerName]) {
+            playerIMPs[playerName] = 0;
+          }
+        });
+      }
+
+      // Process each round
+      for (let round = 1; round <= state.currentRound; round++) {
+        const table1Scores = state.gameData.tables[1]?.scores?.[round] || {};
+        const table2Scores = state.gameData.tables[2]?.scores?.[round] || {};
+        
+        // Get player positions for this specific round
+        const table1Positions = getPlayerPositionsForRound(1, round);
+        const table2Positions = getPlayerPositionsForRound(2, round);
+        
+        // Process each board in this round
+        for (let i = 1; i <= state.boardsPerRound; i++) {
+          const boardNum = (round - 1) * state.boardsPerRound + i;
+          const t1Score = table1Scores[boardNum];
+          const t2Score = table2Scores[boardNum];
+          
+          if (t1Score && t2Score) {
+            const scoreDiff = t1Score.score - t2Score.score;
+            const imps = calculateIMPs(scoreDiff);
+            
+            if (imps !== 0) {
+              // Get the actual players at each position during this round
+              const t1NSPlayers = [table1Positions.north, table1Positions.south];
+              const t1EWPlayers = [table1Positions.east, table1Positions.west];
+              const t2NSPlayers = [table2Positions.north, table2Positions.south];
+              const t2EWPlayers = [table2Positions.east, table2Positions.west];
+              
+              // Award IMPs based on score difference
+              // Positive scoreDiff means Table 1 NS scored better than Table 2 NS
+              if (imps > 0) {
+                // Table 1 NS gains IMPs
+                t1NSPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) + imps; });
+                // Table 1 EW loses IMPs
+                t1EWPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) - imps; });
+                // Table 2 NS loses IMPs
+                t2NSPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) - imps; });
+                // Table 2 EW gains IMPs
+                t2EWPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) + imps; });
+              } else {
+                const absImps = Math.abs(imps);
+                // Table 1 NS loses IMPs
+                t1NSPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) - absImps; });
+                // Table 1 EW gains IMPs
+                t1EWPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) + absImps; });
+                // Table 2 NS gains IMPs
+                t2NSPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) + absImps; });
+                // Table 2 EW loses IMPs
+                t2EWPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) - absImps; });
+              }
+            }
+          }
+        }
+      }
+
+      return Object.entries(playerIMPs)
+        .map(([name, imps]) => ({ name, imps }))
+        .sort((a, b) => b.imps - a.imps);
+    }
+    
+    // Helper function to get player positions at a specific table for a specific round
+    function getPlayerPositionsForRound(tableNumber, round) {
+      if (!state.gameData) return { north: '', south: '', east: '', west: '' };
+      
+      // If round 1, return original positions
+      if (round === 1) {
+        return state.gameData.tables[tableNumber]?.players || { north: '', south: '', east: '', west: '' };
+      }
+      
+      // Track ALL 8 players through the movement
+      const table1Original = state.gameData.tables[1]?.players || {};
+      const table2Original = state.gameData.tables[2]?.players || {};
+      
+      // Create a global player tracking object
+      let playerLocations = {
+        [table1Original.north]: { table: 1, position: 'north' },
+        [table1Original.south]: { table: 1, position: 'south' },
+        [table1Original.east]: { table: 1, position: 'east' },
+        [table1Original.west]: { table: 1, position: 'west' },
+        [table2Original.north]: { table: 2, position: 'north' },
+        [table2Original.south]: { table: 2, position: 'south' },
+        [table2Original.east]: { table: 2, position: 'east' },
+        [table2Original.west]: { table: 2, position: 'west' }
+      };
+      
+      // Apply movement for each round up to the target round
+      for (let r = 1; r < round; r++) {
+        const newPlayerLocations = {};
+        
+        Object.keys(playerLocations).forEach(playerName => {
+          if (!playerName) return;
+          
+          const currentLocation = playerLocations[playerName];
+          const tableKey = `table${currentLocation.table}`;
+          const destination = movement[tableKey][currentLocation.position];
+          
+          newPlayerLocations[playerName] = destination;
+        });
+        
+        playerLocations = newPlayerLocations;
+      }
+      
+      // Build the result for the requested table
+      const result = { north: '', south: '', east: '', west: '' };
+      Object.keys(playerLocations).forEach(playerName => {
+        const location = playerLocations[playerName];
+        if (location.table === tableNumber) {
+          result[location.position] = playerName;
+        }
+      });
+      
+      return result;
+    }
+
+    function getMovementInstructions() {
+      if (!state.tableNumber || !state.tablePlayers) return [];
+      
+      const tableKey = `table${state.tableNumber}`;
+      const instructions = [];
+      
+      ['north', 'south', 'east', 'west'].forEach(position => {
+        const destination = movement[tableKey][position];
+        const playerName = state.tablePlayers[position];
+        if (playerName) {
+          if (destination.table === state.tableNumber && destination.position === position) {
+            instructions.push(`${playerName} (${position[0].toUpperCase()}): Stay at Table ${state.tableNumber} ${position[0].toUpperCase()}`);
+          } else {
+            instructions.push(`${playerName} (${position[0].toUpperCase()}): Move to Table ${destination.table} ${destination.position[0].toUpperCase()}`);
+          }
+        }
+      });
+      
+      return instructions;
+    }
+
+    function getRecordedScores() {
+      if (!state.gameData || !state.tableNumber) return [];
+      const scores = state.gameData.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
+      return Object.values(scores).sort((a, b) => a.board - b.board);
+    }
+
+    // Render functions
+    function render() {
+      console.log('Render called, current screen:', state.screen);
+      const app = document.getElementById('app');
+      console.log('App element:', app);
+      
+      switch (state.screen) {
+        case 'start':
+          console.log('Rendering start screen...');
+          const startHtml = renderStartScreen();
+          console.log('Start screen HTML length:', startHtml?.length);
+          app.innerHTML = startHtml;
+          console.log('App innerHTML set');
+          break;
+        case 'createGame':
+          app.innerHTML = renderCreateGameScreen();
+          break;
+        case 'gameCreated':
+          app.innerHTML = renderGameCreatedScreen();
+          break;
+        case 'joinGame':
+          app.innerHTML = renderJoinGameScreen();
+          break;
+        case 'tableSetup':
+          app.innerHTML = renderTableSetupScreen();
+          break;
+        case 'playing':
+          app.innerHTML = renderPlayingScreen();
+          break;
+        case 'roundWaiting':
+          app.innerHTML = renderRoundWaitingScreen();
+          break;
+        case 'roundEnd':
+          app.innerHTML = renderRoundEndScreen();
+          break;
+        case 'gameSummary':
+          app.innerHTML = renderGameSummaryScreen();
+          break;
+      }
+      
+      console.log('Calling attachEventListeners...');
+      attachEventListeners();
+      console.log('Render complete, app.innerHTML length:', app.innerHTML.length);
+    }
+
+    function renderStartScreen() {
+      return `
+        <div class="setup-container">
+          <div class="header">
+            <h1 class="app-title">Bridge Scorer</h1>
+            <p class="app-subtitle">Individual IMP Scoring</p>
+          </div>
+          <div class="divider"></div>
+          <div class="button-group">
+            <button class="primary-button" onclick="changeScreen('createGame')">
+              Create New Game
+            </button>
+            <button class="secondary-button" onclick="changeScreen('joinGame')">
+              Join Existing Game
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCreateGameScreen() {
+      return `
+        <div class="setup-container">
+          <div class="header">
+            <h1 class="app-title">Create Game</h1>
+          </div>
+          <div class="divider"></div>
+          <div class="config-section">
+            <h2 class="section-title">Boards per Round</h2>
+            <div class="boards-selector">
+              ${[1, 2, 3, 4].map(num => `
+                <button class="board-option ${state.boardsPerRound === num ? 'active' : ''}" 
+                        onclick="setBoardsPerRound(${num})">
+                  ${num}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+          <button class="primary-button" onclick="createGame()">
+            Create Game
+          </button>
+          ${getBackButton('start')}
+        </div>
+      `;
+    }
+
+    function renderGameCreatedScreen() {
+      return `
+        <div class="setup-container">
+          <div class="header">
+            <h1 class="app-title">Game Created!</h1>
+          </div>
+          <div class="divider"></div>
+          <div class="game-id-display">
+            <p class="game-id-label">Game ID:</p>
+            <p class="game-id-code">${state.gameId}</p>
+            <p class="game-id-instruction">Share this ID with all players. Each table should join using this ID.</p>
+          </div>
+          <div class="info-box">
+            <p><strong>Next Steps:</strong></p>
+            <p>1. Have each table enter this Game ID and their table number (1 or 2)</p>
+            <p>2. Players at each table will enter their names</p>
+            <p>3. Start playing and entering scores</p>
+          </div>
+          <button class="secondary-button" onclick="changeScreen('joinGame'); state.joinGameIdInput = state.gameId; loadGameDataForJoin();">
+            Join This Game
+          </button>
+        </div>
+      `;
+    }
+
+    function renderJoinGameScreen() {
+      const isTable1Locked = state.gameData?.tables?.[1]?.sessionId && state.gameData.tables[1].sessionId !== state.sessionId;
+      const isTable2Locked = state.gameData?.tables?.[2]?.sessionId && state.gameData.tables[2].sessionId !== state.sessionId;
+      
+      return `
+        <div class="setup-container">
+          <div class="header">
+            <h1 class="app-title">Join Game</h1>
+          </div>
+          <div class="divider"></div>
+          <div class="form-section">
+            <div class="form-group">
+              <label class="form-label">Game ID</label>
+              <input type="text" class="form-input large-input" 
+                     placeholder="Enter Game ID" 
+                     value="${state.joinGameIdInput}"
+                     oninput="onUserInput()"
+                     onchange="setJoinGameId(this.value)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Table Number</label>
+              <div class="table-selector">
+                <button class="table-option ${state.joinTableInput === '1' ? 'active' : ''} ${isTable1Locked ? 'locked' : ''}" 
+                        onclick="setJoinTable('1')"
+                        ${isTable1Locked ? 'title="This table is in use by another device"' : ''}>
+                  Table 1 ${isTable1Locked ? '🔒' : ''}
+                </button>
+                <button class="table-option ${state.joinTableInput === '2' ? 'active' : ''} ${isTable2Locked ? 'locked' : ''}" 
+                        onclick="setJoinTable('2')"
+                        ${isTable2Locked ? 'title="This table is in use by another device"' : ''}>
+                  Table 2 ${isTable2Locked ? '🔒' : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+          <button class="primary-button" onclick="joinGame()">
+            Join Game
+          </button>
+          ${getBackButton('start')}
+        </div>
+      `;
+    }
+
+    function renderTableSetupScreen() {
+      return `
+        <div class="setup-container">
+          <div class="header">
+            <h1 class="app-title">Table ${state.tableNumber} Setup</h1>
+            <p class="app-subtitle">Game ID: ${state.gameId}</p>
+          </div>
+          <div class="divider"></div>
+          <div class="config-section">
+            <h2 class="section-title">Enter Player Names</h2>
+            <div class="players-grid">
+              ${['north', 'south', 'east', 'west'].map(position => `
+                <div class="player-input-group">
+                  <label class="position-label-input">${position.charAt(0).toUpperCase() + position.slice(1)}</label>
+                  <input type="text" class="form-input" 
+                         placeholder="${position.charAt(0).toUpperCase() + position.slice(1)} player name"
+                         value="${state.tablePlayers[position] || ''}"
+                         oninput="onUserInput()"
+                         onchange="setPlayerName('${position}', this.value)">
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <button class="primary-button" onclick="saveTablePlayers()">
+            Start Playing
+          </button>
+          <button class="secondary-button" onclick="leaveTableSetup()" style="margin-top: 1rem;">
+            ← Back
+          </button>
+        </div>
+      `;
+    }
+
+    function renderPlayingScreen() {
+      const recordedScores = getRecordedScores();
+      const currentPlayers = getCurrentPlayerPositions();
+      
+      return `
+        <div class="game-container">
+          <div class="round-header">
+            <div class="round-info">
+              <div class="game-id-small">Game: ${state.gameId}</div>
+              <div class="round-title">Round ${state.currentRound} of 7 - Table ${state.tableNumber}</div>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <h2 class="table-header">Current Positions</h2>
+            
+            <div class="table-layout">
+              ${['north', 'south', 'east', 'west'].map(position => `
+                <div class="player-badge ${position}">
+                  <div class="position-label">${position[0].toUpperCase()}</div>
+                  <div class="player-name">${currentPlayers[position]}</div>
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="board-scoring">
+              <h3 class="scoring-title">Score Entry</h3>
+              <form class="score-form" onsubmit="recordScore(event)">
+                
+                <!-- Board Number Selection -->
+                <div class="form-group">
+                  <label class="form-label">Board Number</label>
+                  <div class="board-buttons">
+                    ${getBoardNumbersForRound(state.currentRound, state.boardsPerRound).map(boardNum => {
+                      const isRecorded = recordedScores.some(s => s.board === boardNum);
+                      const isSelected = state.scoreForm.board == boardNum;
+                      return `
+                        <button type="button" 
+                                class="board-btn ${isSelected ? 'selected' : ''} ${isRecorded ? 'recorded' : ''}" 
+                                onclick="setScoreFormBoard(${boardNum})">
+                          ${boardNum} ${isRecorded ? '✓' : ''}
+                        </button>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+
+                <!-- Declarer Selection -->
+                <div class="form-group">
+                  <label class="form-label">Declarer</label>
+                  <div class="declarer-buttons">
+                    ${['north', 'south', 'east', 'west'].map(pos => `
+                      <button type="button" 
+                              class="declarer-btn ${state.scoreForm.declarer === pos ? 'selected' : ''}" 
+                              onclick="setScoreFormDeclarer('${pos}')">
+                        ${pos[0].toUpperCase()} - ${currentPlayers[pos]}
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Contract Level -->
+                <div class="form-group">
+                  <label class="form-label">Level</label>
+                  <div class="level-buttons">
+                    ${[1, 2, 3, 4, 5, 6, 7].map(level => `
+                      <button type="button" 
+                              class="level-btn ${state.scoreForm.level === level ? 'selected' : ''}" 
+                              onclick="setScoreFormLevel(${level})">
+                        ${level}
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Contract Strain -->
+                <div class="form-group">
+                  <label class="form-label">Strain</label>
+                  <div class="strain-buttons">
+                    <button type="button" 
+                            class="strain-btn clubs ${state.scoreForm.strain === 'C' ? 'selected' : ''}" 
+                            onclick="setScoreFormStrain('C')">
+                      ♣
+                    </button>
+                    <button type="button" 
+                            class="strain-btn diamonds ${state.scoreForm.strain === 'D' ? 'selected' : ''}" 
+                            onclick="setScoreFormStrain('D')">
+                      ♦
+                    </button>
+                    <button type="button" 
+                            class="strain-btn hearts ${state.scoreForm.strain === 'H' ? 'selected' : ''}" 
+                            onclick="setScoreFormStrain('H')">
+                      ♥
+                    </button>
+                    <button type="button" 
+                            class="strain-btn spades ${state.scoreForm.strain === 'S' ? 'selected' : ''}" 
+                            onclick="setScoreFormStrain('S')">
+                      ♠
+                    </button>
+                    <button type="button" 
+                            class="strain-btn notrump ${state.scoreForm.strain === 'NT' ? 'selected' : ''}" 
+                            onclick="setScoreFormStrain('NT')">
+                      NT
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Doubling -->
+                <div class="form-group">
+                  <label class="form-label">Doubling</label>
+                  <div class="double-buttons">
+                    <button type="button" 
+                            class="double-btn ${state.scoreForm.double === '' ? 'selected' : ''}" 
+                            onclick="setScoreFormDouble('')">
+                      None
+                    </button>
+                    <button type="button" 
+                            class="double-btn ${state.scoreForm.double === 'X' ? 'selected' : ''}" 
+                            onclick="setScoreFormDouble('X')">
+                      X
+                    </button>
+                    <button type="button" 
+                            class="double-btn ${state.scoreForm.double === 'XX' ? 'selected' : ''}" 
+                            onclick="setScoreFormDouble('XX')">
+                      XX
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Tricks Taken -->
+                <div class="form-group">
+                  <label class="form-label">Tricks Taken</label>
+                  <div class="tricks-buttons">
+                    ${Array.from({ length: 7 }, (_, i) => i).map(tricks => `
+                      <button type="button" 
+                              class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
+                              onclick="setScoreFormTricks(${tricks})">
+                        ${tricks}
+                      </button>
+                    `).join('')}
+                  </div>
+                  <div class="tricks-buttons" style="margin-top: 0.5rem;">
+                    ${Array.from({ length: 7 }, (_, i) => i + 7).map(tricks => `
+                      <button type="button" 
+                              class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
+                              onclick="setScoreFormTricks(${tricks})">
+                        ${tricks}
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <button type="submit" class="submit-score-btn">
+                  Record Score
+                </button>
+              </form>
+
+              <div class="recorded-scores">
+                <h4 class="recorded-title">Recorded Scores:</h4>
+                ${recordedScores.map(score => `
+                  <div class="score-item">
+                    Board ${score.board}: ${score.contract} by ${score.declarer.charAt(0).toUpperCase() + score.declarer.slice(1)} = ${score.score}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRoundWaitingScreen() {
+      const recordedScores = getRecordedScores();
+      
+      // Check if both tables are complete
+      const table1Scores = state.gameData?.tables?.[1]?.scores?.[state.currentRound] || {};
+      const table2Scores = state.gameData?.tables?.[2]?.scores?.[state.currentRound] || {};
+      let bothTablesComplete = true;
+      for (let i = 1; i <= state.boardsPerRound; i++) {
+        const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+        if (!table1Scores[boardNum] || !table2Scores[boardNum]) {
+          bothTablesComplete = false;
+          break;
+        }
+      }
+      
+      return `
+        <div class="game-container">
+          <div class="round-header">
+            <div class="round-info">
+              <div class="game-id-small">Game: ${state.gameId}</div>
+              <div class="round-title">Round ${state.currentRound} - Table ${state.tableNumber} Complete!</div>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <h2 class="table-header">Your Scores This Round</h2>
+            
+            <div class="recorded-scores" style="margin-top: 0;">
+              ${recordedScores.map(score => `
+                <div class="score-item" style="display: flex; justify-content: space-between; align-items: center;">
+                  <span><strong>Board ${score.board}:</strong> ${score.contract} by ${score.declarer.charAt(0).toUpperCase() + score.declarer.slice(1)} = ${score.score >= 0 ? '+' : ''}${score.score}</span>
+                  ${!bothTablesComplete ? `
+                    <button onclick="deleteScore(${score.board})" 
+                            style="padding: 0.5rem 1rem; background: rgba(244, 67, 54, 0.2); border: 2px solid rgba(244, 67, 54, 0.5); 
+                                   border-radius: 6px; color: #f44336; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+                                   transition: all 0.2s ease; font-family: 'Crimson Text', serif;"
+                            onmouseover="this.style.background='rgba(244, 67, 54, 0.3)'; this.style.borderColor='#f44336';"
+                            onmouseout="this.style.background='rgba(244, 67, 54, 0.2)'; this.style.borderColor='rgba(244, 67, 54, 0.5)';">
+                      ✕ Edit
+                    </button>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+
+            ${bothTablesComplete ? `
+              <div class="round-complete-banner">
+                <p>✓ Both tables have finished!</p>
+                <button class="view-results-btn" onclick="changeScreen('roundEnd')">
+                  View Results & Movement
+                </button>
+              </div>
+            ` : `
+              <div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(255, 215, 0, 0.1); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 8px; text-align: center;">
+                <p style="color: #ffd700; font-weight: 600; font-size: 1.1rem;">⏳ Waiting for other table to complete...</p>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRoundEndScreen() {
+      const leaderboard = calculateLeaderboard();
+      const movementInstructions = getMovementInstructions();
+      const isGameComplete = state.currentRound >= 7;
+
+      return `
+        <div class="game-container">
+          <div class="results-header">
+            <h1 class="results-title">
+              ${isGameComplete ? 'Final Results' : `Round ${state.currentRound} Complete`}
+            </h1>
+            <p class="game-id-small">Game: ${state.gameId}</p>
+          </div>
+
+          <div class="leaderboard-card">
+            <h2 class="leaderboard-title">
+              🏆 Leaderboard
+            </h2>
+            <div class="leaderboard-list">
+              ${leaderboard.map((player, index) => `
+                <div class="leaderboard-item rank-${index + 1}">
+                  <div class="rank-badge">${index + 1}</div>
+                  <div class="player-info">
+                    <div class="player-name-lb">${player.name}</div>
+                  </div>
+                  <div class="imps-score ${player.imps >= 0 ? 'positive' : 'negative'}">
+                    ${player.imps >= 0 ? '+' : ''}${player.imps} IMPs
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          ${!isGameComplete ? `
+            <div class="movement-card">
+              <h2 class="movement-title">
+                🔀 Movement Instructions for Next Round
+              </h2>
+              <div class="movement-list">
+                ${movementInstructions.map(instruction => `
+                  <div class="movement-item">${instruction}</div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="action-buttons">
+            ${!isGameComplete ? `
+              <button class="primary-button" onclick="advanceToNextRound()">
+                Continue to Round ${state.currentRound + 1}
+              </button>
+            ` : `
+              <button class="primary-button" onclick="startNewGame()">
+                New Game
+              </button>
+            `}
+            <button class="secondary-button" onclick="changeScreen('gameSummary')" style="margin-top: 1rem;">
+              📊 View Full Game Summary
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGameSummaryScreen() {
+      if (!state.gameData) return '';
+      
+      // Build round summaries
+      const roundSummaries = [];
+      
+      for (let round = 1; round <= state.currentRound; round++) {
+        const table1Scores = state.gameData.tables[1]?.scores?.[round] || {};
+        const table2Scores = state.gameData.tables[2]?.scores?.[round] || {};
+        
+        // Get player positions for this round
+        const table1Positions = getPlayerPositionsForRound(1, round);
+        const table2Positions = getPlayerPositionsForRound(2, round);
+        
+        // Team 1 = NS at Table 1 (which equals EW at Table 2)
+        // Team 2 = EW at Table 1 (which equals NS at Table 2)
+        let team1IMPs = 0;
+        let team2IMPs = 0;
+        
+        const boards = [];
+        
+        // Get all boards for this round
+        for (let i = 1; i <= state.boardsPerRound; i++) {
+          const boardNum = (round - 1) * state.boardsPerRound + i;
+          const t1Score = table1Scores[boardNum];
+          const t2Score = table2Scores[boardNum];
+          
+          // Calculate IMPs
+          let imps = 0;
+          if (t1Score && t2Score) {
+            const scoreDiff = t1Score.score - t2Score.score;
+            imps = calculateIMPs(scoreDiff);
+            
+            // Positive IMPs means Table 1 NS (Team 1) did better
+            team1IMPs += imps;
+            team2IMPs -= imps;
+          }
+          
+          boards.push({
+            boardNum,
+            table1: t1Score,
+            table2: t2Score,
+            imps
+          });
+        }
+        
+        roundSummaries.push({
+          round,
+          table1Positions,
+          table2Positions,
+          team1IMPs,
+          team2IMPs,
+          boards
+        });
+      }
+      
+      return `
+        <div class="game-container">
+          <div class="results-header">
+            <h1 class="results-title">📊 Full Game Summary</h1>
+            <p class="game-id-small">Game: ${state.gameId}</p>
+          </div>
+
+          ${roundSummaries.length === 0 ? `
+            <div class="leaderboard-card">
+              <p style="text-align: center; color: #b8b8d8; padding: 2rem;">No boards have been played yet.</p>
+            </div>
+          ` : roundSummaries.map(summary => `
+            <div class="leaderboard-card" style="margin-bottom: 1.5rem;">
+              <h2 class="leaderboard-title">Round ${summary.round}</h2>
+              
+              <!-- Team Summary -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <!-- Team 1 (NS at Table 1 + EW at Table 2) -->
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px;">
+                  <div style="color: #ffd700; font-weight: 600; margin-bottom: 0.75rem; text-align: center;">Team 1</div>
+                  <div style="font-size: 0.9rem; color: #b8b8d8; margin-bottom: 0.5rem; text-align: center;">
+                    ${summary.table1Positions.north} & ${summary.table1Positions.south}<br>
+                    ${summary.table2Positions.east} & ${summary.table2Positions.west}
+                  </div>
+                  <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team1IMPs >= 0 ? '#4caf50' : '#f44336'};">
+                    ${summary.team1IMPs >= 0 ? '+' : ''}${summary.team1IMPs} IMPs
+                  </div>
+                </div>
+                
+                <!-- Team 2 (EW at Table 1 + NS at Table 2) -->
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px;">
+                  <div style="color: #ffd700; font-weight: 600; margin-bottom: 0.75rem; text-align: center;">Team 2</div>
+                  <div style="font-size: 0.9rem; color: #b8b8d8; margin-bottom: 0.5rem; text-align: center;">
+                    ${summary.table1Positions.east} & ${summary.table1Positions.west}<br>
+                    ${summary.table2Positions.north} & ${summary.table2Positions.south}
+                  </div>
+                  <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team2IMPs >= 0 ? '#4caf50' : '#f44336'};">
+                    ${summary.team2IMPs >= 0 ? '+' : ''}${summary.team2IMPs} IMPs
+                  </div>
+                </div>
+              </div>
+                              
+              <!-- Board Details -->
+              <div style="border-top: 2px solid rgba(255, 215, 0, 0.3); padding-top: 1rem;">
+                <h3 style="color: #ffd700; font-size: 1rem; margin-bottom: 0.75rem;">Board Results</h3>
+                <div style="display: grid; gap: 0.75rem;">
+                  ${summary.boards.map(board => `
+                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 215, 0, 0.15); 
+                                border-radius: 6px; padding: 0.75rem;">
+                      <div style="display: grid; grid-template-columns: 80px 1fr auto 1fr; gap: 1rem; align-items: center;">
+                        <strong style="color: #ffd700;">Board ${board.boardNum}</strong>
+                        
+                        <!-- Table 1 -->
+                        <div>
+                          ${board.table1 ? `
+                            <span style="font-size: 0.9rem;">
+                              <strong>${board.table1.contract}</strong> by ${board.table1.declarer.charAt(0).toUpperCase()}
+                            </span>
+                            <span style="font-weight: 700; color: ${board.table1.score >= 0 ? '#4caf50' : '#f44336'}; margin-left: 0.5rem;">
+                              ${board.table1.score >= 0 ? '+' : ''}${board.table1.score}
+                            </span>
+                          ` : `
+                            <span style="color: #888; font-style: italic; font-size: 0.9rem;">Not played</span>
+                          `}
+                        </div>
+                        
+                        <!-- IMPs -->
+                        <div style="text-align: center; min-width: 50px;">
+                          ${board.table1 && board.table2 ? `
+                            <span style="font-weight: 700; font-size: 1.1rem; color: ${board.imps > 0 ? '#4caf50' : board.imps < 0 ? '#f44336' : '#b8b8d8'}">
+                              ${board.imps > 0 ? '+' : ''}${board.imps}
+                            </span>
+                          ` : `
+                            <span style="color: #888;">-</span>
+                          `}
+                        </div>
+                        
+                        <!-- Table 2 -->
+                        <div>
+                          ${board.table2 ? `
+                            <span style="font-size: 0.9rem;">
+                              <strong>${board.table2.contract}</strong> by ${board.table2.declarer.charAt(0).toUpperCase()}
+                            </span>
+                            <span style="font-weight: 700; color: ${board.table2.score >= 0 ? '#4caf50' : '#f44336'}; margin-left: 0.5rem;">
+                              ${board.table2.score >= 0 ? '+' : ''}${board.table2.score}
+                            </span>
+                          ` : `
+                            <span style="color: #888; font-style: italic; font-size: 0.9rem;">Not played</span>
+                          `}
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          `).join('')}
+
+          <div class="action-buttons">
+            <button class="secondary-button" onclick="changeScreen('roundEnd')">
+              ← Back to Results
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Event handlers
+    function startNewGame() {
+      stopSync();
+      clearLocalStorage();
+      
+      // Reset state
+      state = {
+        screen: 'start',
+        gameId: '',
+        tableNumber: null,
+        sessionId: Math.random().toString(36).substring(2, 15),
+        boardsPerRound: 4,
+        currentRound: 1,
+        tablePlayers: { north: '', south: '', east: '', west: '' },
+        gameData: null,
+        joinGameIdInput: '',
+        joinTableInput: '',
+        scoreForm: { 
+          board: 1, 
+          level: null,
+          strain: null,
+          double: '',
+          declarer: '', 
+          tricksTaken: null
+        }
+      };
+      
+      changeScreen('start');
+    }
+    
+    function changeScreen(screen, addToHistory = true) {
+      state.screen = screen;
+      if (addToHistory) {
+        // Add to browser history so back button works
+        window.history.pushState({ screen: screen }, '', `#${screen}`);
+      }
+      render();
+    }
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', (event) => {
+      if (event.state && event.state.screen) {
+        changeScreen(event.state.screen, false);
+      } else {
+        changeScreen('start', false);
+      }
+    });
+
+    // Set initial history state
+    window.history.replaceState({ screen: 'start' }, '', '#start');
+
+    function getBackButton(destination, text = '← Back') {
+      return `
+        <button class="secondary-button" onclick="changeScreen('${destination}')" style="margin-top: 1rem;">
+          ${text}
+        </button>
+      `;
+    }
+
+    async function leaveTableSetup() {
+      // Release the table lock
+      if (state.tableNumber && state.gameId) {
+        const releaseUpdate = {
+          tables: {
+            [state.tableNumber]: {
+              sessionId: null
+            }
+          }
+        };
+        await fetch(`${API_URL}/games/${state.gameId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(releaseUpdate)
+        });
+      }
+      
+      // Reset state
+      state.tableNumber = null;
+      state.tablePlayers = { north: '', south: '', east: '', west: '' };
+      stopSync();
+      changeScreen('joinGame');
+    }
+
+    function setBoardsPerRound(num) {
+      state.boardsPerRound = num;
+      render();
+    }
+
+    function setJoinGameId(value) {
+      state.joinGameIdInput = value.toUpperCase();
+      
+      // Load game data to check table locks
+      if (value.length >= 6) {
+        loadGameDataForJoin();
+      }
+    }
+
+    function loadGameDataForJoin() {
+      if (state.joinGameIdInput.length >= 6) {
+        fetch(`${API_URL}/games/${state.joinGameIdInput.toUpperCase()}`)
+          .then(response => response.ok ? response.json() : null)
+          .then(data => {
+            if (data) {
+              state.gameData = data;
+              render();
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    function setJoinTable(value) {
+      state.joinTableInput = value;
+      render();
+    }
+
+    function setPlayerName(position, value) {
+      state.tablePlayers[position] = value;
+    }
+
+    function setScoreFormBoard(value) {
+      state.scoreForm.board = value;
+      render();
+    }
+
+    function setScoreFormLevel(value) {
+      state.scoreForm.level = value;
+      render();
+    }
+
+    function setScoreFormStrain(value) {
+      state.scoreForm.strain = value;
+      render();
+    }
+
+    function setScoreFormDouble(value) {
+      state.scoreForm.double = value;
+      render();
+    }
+
+    function setScoreFormDeclarer(value) {
+      state.scoreForm.declarer = value;
+      render();
+    }
+
+    function setScoreFormTricks(value) {
+      state.scoreForm.tricksTaken = value;
+      render();
+    }
+
+    function setScoreFormContract(value) {
+      state.scoreForm.contract = value;
+    }
+
+    function setScoreFormScore(value) {
+      state.scoreForm.score = value;
+    }
+
+    function attachEventListeners() {
+      // Event listeners are handled inline with onclick attributes
+    }
+
+    // LocalStorage persistence functions
+    const STORAGE_KEY = 'bridge-scorer-state';
+    
+    function saveStateToLocalStorage() {
+      try {
+        const stateToSave = {
+          screen: state.screen,
+          gameId: state.gameId,
+          tableNumber: state.tableNumber,
+          sessionId: state.sessionId,
+          boardsPerRound: state.boardsPerRound,
+          currentRound: state.currentRound,
+          tablePlayers: state.tablePlayers,
+          joinGameIdInput: state.joinGameIdInput,
+          joinTableInput: state.joinTableInput,
+          scoreForm: state.scoreForm
+        };
+        console.log('Saving to localStorage:', stateToSave.screen);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+      } catch (e) {
+        console.error('Failed to save state to localStorage:', e);
+      }
+    }
+    
+    function loadStateFromLocalStorage() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const savedState = JSON.parse(saved);
+          
+          // Restore state
+          state.screen = savedState.screen || 'start';
+          state.gameId = savedState.gameId || '';
+          state.tableNumber = savedState.tableNumber || null;
+          state.sessionId = savedState.sessionId || state.sessionId; // Restore to maintain table lock
+          state.boardsPerRound = savedState.boardsPerRound || 4;
+          state.currentRound = savedState.currentRound || 1;
+          state.tablePlayers = savedState.tablePlayers || { north: '', south: '', east: '', west: '' };
+          state.joinGameIdInput = savedState.joinGameIdInput || '';
+          state.joinTableInput = savedState.joinTableInput || '';
+          state.scoreForm = savedState.scoreForm || { 
+            board: 1, 
+            level: null,
+            strain: null,
+            double: '',
+            declarer: '', 
+            tricksTaken: null
+          };
+          
+          // If we were in an active game, reconnect
+          if (state.gameId && (state.screen === 'playing' || state.screen === 'roundWaiting' || state.screen === 'roundEnd' || state.screen === 'tableSetup' || state.screen === 'gameSummary')) {
+            // Fetch latest game data
+            fetch(`${API_URL}/games/${state.gameId}`)
+              .then(response => response.ok ? response.json() : null)
+              .then(data => {
+                if (data) {
+                  state.gameData = data;
+                  
+                  // Only update currentRound if we're not on the round end or waiting screens
+                  // (to prevent confusion when reconnecting while viewing results)
+                  if (state.screen !== 'roundEnd' && state.screen !== 'roundWaiting') {
+                    state.currentRound = data.currentRound;
+                  }
+                  
+                  // If we were on gameSummary, go to roundEnd instead (can navigate back to summary from there)
+                  if (state.screen === 'gameSummary') {
+                    state.screen = 'roundEnd';
+                  }
+                  
+                  // Restart sync if we were in an active game
+                  if (state.screen !== 'start' && state.screen !== 'createGame' && state.screen !== 'gameCreated' && state.screen !== 'joinGame') {
+                    startSync();
+                  }
+                  
+                  render();
+                  
+                  // Show reconnection banner
+                  const banner = document.createElement('div');
+                  banner.innerHTML = showReconnectionBanner();
+                  document.body.appendChild(banner.firstElementChild);
+                  
+                  // Auto-hide after 3 seconds
+                  setTimeout(() => {
+                    const bannerEl = document.body.querySelector('[style*="position: fixed"]');
+                    if (bannerEl) {
+                      bannerEl.style.animation = 'slideUp 0.3s ease';
+                      setTimeout(() => bannerEl.remove(), 300);
+                    }
+                  }, 3000);
+                } else {
+                  // Game not found, go back to start and clear saved state
+                  console.log('Game not found, resetting to start');
+                  clearLocalStorage();
+                  
+                  // Reset ALL state to initial values
+                  state.screen = 'start';
+                  state.gameId = '';
+                  state.tableNumber = null;
+                  state.sessionId = Math.random().toString(36).substring(2, 15); // New session
+                  state.boardsPerRound = 4;
+                  state.currentRound = 1;
+                  state.tablePlayers = { north: '', south: '', east: '', west: '' };
+                  state.gameData = null;
+                  state.joinGameIdInput = '';
+                  state.joinTableInput = '';
+                  state.scoreForm = { 
+                    board: 1, 
+                    level: null,
+                    strain: null,
+                    double: '',
+                    declarer: '', 
+                    tricksTaken: null
+                  };
+                  
+                  render();
+                }
+              })
+              .catch(error => {
+                console.error('Failed to reconnect to game:', error);
+                clearLocalStorage();
+                
+                // Reset ALL state to initial values
+                state.screen = 'start';
+                state.gameId = '';
+                state.tableNumber = null;
+                state.sessionId = Math.random().toString(36).substring(2, 15); // New session
+                state.boardsPerRound = 4;
+                state.currentRound = 1;
+                state.tablePlayers = { north: '', south: '', east: '', west: '' };
+                state.gameData = null;
+                state.joinGameIdInput = '';
+                state.joinTableInput = '';
+                state.scoreForm = { 
+                  board: 1, 
+                  level: null,
+                  strain: null,
+                  double: '',
+                  declarer: '', 
+                  tricksTaken: null
+                };
+                
+                render();
+              });
+            
+            return true; // Indicate we're reconnecting
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load state from localStorage:', e);
+      }
+      return false; // No reconnection needed
+    }
+    
+    function clearLocalStorage() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.error('Failed to clear localStorage:', e);
+      }
+    }
+    
+    function showReconnectionBanner() {
+      return `
+        <div style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
+                    background: rgba(76, 175, 80, 0.95); color: white; padding: 1rem 2rem; 
+                    border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000;
+                    animation: slideDown 0.3s ease;">
+          <strong>✓ Reconnected to game</strong>
+        </div>
+        <style>
+          @keyframes slideDown {
+            from { top: -100px; opacity: 0; }
+            to { top: 20px; opacity: 1; }
+          }
+          @keyframes slideUp {
+            from { top: 20px; opacity: 1; }
+            to { top: -100px; opacity: 0; }
+          }
+        </style>
+      `;
+    }
+
+    // Initialize
+    console.log('Starting initialization...');
+    console.log('State:', state);
+    
+    try {
+      const isReconnecting = loadStateFromLocalStorage();
+      console.log('Reconnecting:', isReconnecting);
+      if (!isReconnecting) {
+        console.log('Calling initial render...');
+        render();
+        console.log('Initial render complete');
+      }
+    } catch (error) {
+      console.error('Initialization error:', error);
+      // Fallback render
+      document.getElementById('app').innerHTML = `
+        <div class="setup-container">
+          <h1 style="color: red;">Error: ${error.message}</h1>
+          <pre>${error.stack}</pre>
+        </div>
+      `;
+    }
+    
+    // Save state whenever it changes
+    const originalRender = render;
+    render = function() {
+      try {
+        originalRender();
+        saveStateToLocalStorage();
+      } catch (error) {
+        console.error('Render error:', error);
+      }
+    };
+  </script>
+</body>
+</html>
