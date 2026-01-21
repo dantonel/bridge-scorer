@@ -5,11 +5,6 @@ function sendJSON(res, statusCode, data) {
   res.status(statusCode).json(data);
 }
 
-// Helper function to parse request body
-function parseBody(req) {
-  return req.body || {};
-}
-
 // Deep merge helper to merge nested objects
 // null values in source are treated as deletions
 function deepMerge(target, source) {
@@ -41,51 +36,59 @@ function isObject(item) {
 
 // Serverless function handler for Vercel
 export default async (req, res) => {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  try {
+    // Enable CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  
-  // GET /api/games/:gameId
-  if (req.method === 'GET' && url.pathname.startsWith('/api/games/')) {
-    const gameId = url.pathname.split('/')[3];
-    const game = await kv.get(`game:${gameId}`);
-    
-    if (game) {
-      sendJSON(res, 200, game);
-    } else {
-      sendJSON(res, 404, { error: 'Game not found' });
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
+      return;
     }
-    return;
-  }
 
-  // POST /api/games (create new game)
-  if (req.method === 'POST' && url.pathname === '/api/games') {
-    try {
-      const gameData = parseBody(req);
+    const url = new URL(req.url, `https://${req.headers.host}`);
+    
+    // GET /api/games/:gameId
+    if (req.method === 'GET' && url.pathname.startsWith('/api/games/')) {
+      const gameId = url.pathname.split('/')[3];
+      const game = await kv.get(`game:${gameId}`);
+      
+      if (game) {
+        sendJSON(res, 200, game);
+      } else {
+        sendJSON(res, 404, { error: 'Game not found' });
+      }
+      return;
+    }
+
+    // POST /api/games (create new game)
+    if (req.method === 'POST' && url.pathname === '/api/games') {
+      const gameData = req.body;
+      
+      if (!gameData || !gameData.gameId) {
+        sendJSON(res, 400, { error: 'Invalid request body - missing gameId' });
+        return;
+      }
+      
       await kv.set(`game:${gameData.gameId}`, gameData);
       // Set expiration to 24 hours (86400 seconds)
       await kv.expire(`game:${gameData.gameId}`, 86400);
       sendJSON(res, 201, gameData);
-    } catch (e) {
-      sendJSON(res, 400, { error: 'Invalid request body' });
+      return;
     }
-    return;
-  }
 
-  // PATCH /api/games/:gameId (partial update - merge changes)
-  if (req.method === 'PATCH' && url.pathname.startsWith('/api/games/')) {
-    const gameId = url.pathname.split('/')[3];
-    try {
-      const updates = parseBody(req);
+    // PATCH /api/games/:gameId (partial update - merge changes)
+    if (req.method === 'PATCH' && url.pathname.startsWith('/api/games/')) {
+      const gameId = url.pathname.split('/')[3];
+      const updates = req.body;
+      
+      if (!updates) {
+        sendJSON(res, 400, { error: 'Invalid request body' });
+        return;
+      }
+      
       const existingGame = await kv.get(`game:${gameId}`);
       
       if (!existingGame) {
@@ -99,27 +102,30 @@ export default async (req, res) => {
       // Refresh expiration to 24 hours
       await kv.expire(`game:${gameId}`, 86400);
       sendJSON(res, 200, updatedGame);
-    } catch (e) {
-      sendJSON(res, 400, { error: 'Invalid request body' });
+      return;
     }
-    return;
-  }
 
-  // PUT /api/games/:gameId (full replace - for backward compatibility)
-  if (req.method === 'PUT' && url.pathname.startsWith('/api/games/')) {
-    const gameId = url.pathname.split('/')[3];
-    try {
-      const gameData = parseBody(req);
+    // PUT /api/games/:gameId (full replace - for backward compatibility)
+    if (req.method === 'PUT' && url.pathname.startsWith('/api/games/')) {
+      const gameId = url.pathname.split('/')[3];
+      const gameData = req.body;
+      
+      if (!gameData) {
+        sendJSON(res, 400, { error: 'Invalid request body' });
+        return;
+      }
+      
       await kv.set(`game:${gameId}`, gameData);
       // Refresh expiration to 24 hours
       await kv.expire(`game:${gameId}`, 86400);
       sendJSON(res, 200, gameData);
-    } catch (e) {
-      sendJSON(res, 400, { error: 'Invalid request body' });
+      return;
     }
-    return;
-  }
 
-  // 404 for other routes
-  res.status(404).end('Not Found');
+    // 404 for other routes
+    res.status(404).json({ error: 'Not Found' });
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
 };
