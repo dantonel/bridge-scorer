@@ -980,18 +980,36 @@
                                    state.tablePlayers.west;
           
           if (allPlayersFilled) {
-            // Players already set - skip directly to playing screen
-            console.log('All players already set, skipping to playing screen');
-            const startBoard = (state.currentRound - 1) * state.boardsPerRound + 1;
-            state.scoreForm = { 
-              board: startBoard, 
-              level: null,
-              strain: null,
-              double: '',
-              declarer: '', 
-              tricksTaken: null
-            };
-            state.screen = 'playing';
+            // Players already set - check if this table completed all boards for current round
+            const thisTableScores = data.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
+            let thisTableComplete = true;
+            for (let i = 1; i <= state.boardsPerRound; i++) {
+              const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+              if (!thisTableScores[boardNum]) {
+                thisTableComplete = false;
+                break;
+              }
+            }
+            
+            if (thisTableComplete) {
+              // This table already completed the round - go to waiting screen
+              console.log('Round already complete, going to roundWaiting');
+              state.screen = 'roundWaiting';
+              startSync(); // Start polling to detect when other table finishes
+            } else {
+              // Not complete - go to playing screen
+              console.log('All players already set, skipping to playing screen');
+              const startBoard = (state.currentRound - 1) * state.boardsPerRound + 1;
+              state.scoreForm = { 
+                board: startBoard, 
+                level: null,
+                strain: null,
+                double: '',
+                declarer: '', 
+                tricksTaken: null
+              };
+              state.screen = 'playing';
+            }
           } else {
             // No players set yet - go to tableSetup to enter names
             console.log('Players not set, going to tableSetup');
@@ -1948,7 +1966,74 @@
                   </div>
                 </div>
 
-                <!-- Declarer Selection -->
+                <!-- Contract -->\n                <div class="form-group">
+                  <label class="form-label">Contract</label>
+                  
+                  <!-- Level -->
+                  <div style="margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: #b8b8d8; margin-bottom: 0.5rem;">Level</div>
+                    <div class="level-buttons">
+                      ${[1, 2, 3, 4, 5, 6, 7].map(level => `
+                        <button type="button" 
+                                class="level-btn ${state.scoreForm.level === level ? 'selected' : ''}" 
+                                onclick="setScoreFormLevel(${level})">
+                          ${level}
+                        </button>
+                      `).join('')}
+                    </div>
+                  </div>
+                  
+                  <!-- Strain -->
+                  <div style="margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: #b8b8d8; margin-bottom: 0.5rem;">Strain</div>
+                    <div class="strain-buttons">
+                      <button type="button" 
+                              class="strain-btn clubs ${state.scoreForm.strain === 'C' ? 'selected' : ''}" 
+                              onclick="setScoreFormStrain('C')">
+                        ♣
+                      </button>
+                      <button type="button" 
+                              class="strain-btn diamonds ${state.scoreForm.strain === 'D' ? 'selected' : ''}" 
+                              onclick="setScoreFormStrain('D')">
+                        ♦
+                      </button>
+                      <button type="button" 
+                              class="strain-btn hearts ${state.scoreForm.strain === 'H' ? 'selected' : ''}" 
+                              onclick="setScoreFormStrain('H')">
+                        ♥
+                      </button>
+                      <button type="button" 
+                              class="strain-btn spades ${state.scoreForm.strain === 'S' ? 'selected' : ''}" 
+                              onclick="setScoreFormStrain('S')">
+                        ♠
+                      </button>
+                      <button type="button" 
+                              class="strain-btn notrump ${state.scoreForm.strain === 'NT' ? 'selected' : ''}" 
+                              onclick="setScoreFormStrain('NT')">
+                        NT
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Doubling (toggle buttons) -->
+                  <div>
+                    <div style="font-size: 0.85rem; color: #b8b8d8; margin-bottom: 0.5rem;">Doubling</div>
+                    <div class="double-buttons">
+                      <button type="button" 
+                              class="double-btn ${state.scoreForm.double === 'X' ? 'selected' : ''}" 
+                              onclick="toggleDouble('X')">
+                        X
+                      </button>
+                      <button type="button" 
+                              class="double-btn ${state.scoreForm.double === 'XX' ? 'selected' : ''}" 
+                              onclick="toggleDouble('XX')">
+                        XX
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Declarer (moved below Contract) -->
                 <div class="form-group">
                   <label class="form-label">Declarer</label>
                   <div class="declarer-buttons">
@@ -1962,95 +2047,47 @@
                   </div>
                 </div>
 
-                <!-- Contract Level -->
+                <!-- Result (replaced Tricks Taken) -->
                 <div class="form-group">
-                  <label class="form-label">Level</label>
-                  <div class="level-buttons">
-                    ${[1, 2, 3, 4, 5, 6, 7].map(level => `
-                      <button type="button" 
-                              class="level-btn ${state.scoreForm.level === level ? 'selected' : ''}" 
-                              onclick="setScoreFormLevel(${level})">
-                        ${level}
-                      </button>
-                    `).join('')}
-                  </div>
-                </div>
-
-                <!-- Contract Strain -->
-                <div class="form-group">
-                  <label class="form-label">Strain</label>
-                  <div class="strain-buttons">
-                    <button type="button" 
-                            class="strain-btn clubs ${state.scoreForm.strain === 'C' ? 'selected' : ''}" 
-                            onclick="setScoreFormStrain('C')">
-                      ♣
-                    </button>
-                    <button type="button" 
-                            class="strain-btn diamonds ${state.scoreForm.strain === 'D' ? 'selected' : ''}" 
-                            onclick="setScoreFormStrain('D')">
-                      ♦
-                    </button>
-                    <button type="button" 
-                            class="strain-btn hearts ${state.scoreForm.strain === 'H' ? 'selected' : ''}" 
-                            onclick="setScoreFormStrain('H')">
-                      ♥
-                    </button>
-                    <button type="button" 
-                            class="strain-btn spades ${state.scoreForm.strain === 'S' ? 'selected' : ''}" 
-                            onclick="setScoreFormStrain('S')">
-                      ♠
-                    </button>
-                    <button type="button" 
-                            class="strain-btn notrump ${state.scoreForm.strain === 'NT' ? 'selected' : ''}" 
-                            onclick="setScoreFormStrain('NT')">
-                      NT
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Doubling -->
-                <div class="form-group">
-                  <label class="form-label">Doubling</label>
-                  <div class="double-buttons">
-                    <button type="button" 
-                            class="double-btn ${state.scoreForm.double === '' ? 'selected' : ''}" 
-                            onclick="setScoreFormDouble('')">
-                      None
-                    </button>
-                    <button type="button" 
-                            class="double-btn ${state.scoreForm.double === 'X' ? 'selected' : ''}" 
-                            onclick="setScoreFormDouble('X')">
-                      X
-                    </button>
-                    <button type="button" 
-                            class="double-btn ${state.scoreForm.double === 'XX' ? 'selected' : ''}" 
-                            onclick="setScoreFormDouble('XX')">
-                      XX
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Tricks Taken -->
-                <div class="form-group">
-                  <label class="form-label">Tricks Taken</label>
-                  <div class="tricks-buttons">
-                    ${Array.from({ length: 7 }, (_, i) => i).map(tricks => `
-                      <button type="button" 
-                              class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
-                              onclick="setScoreFormTricks(${tricks})">
-                        ${tricks}
-                      </button>
-                    `).join('')}
-                  </div>
-                  <div class="tricks-buttons" style="margin-top: 0.5rem;">
-                    ${Array.from({ length: 7 }, (_, i) => i + 7).map(tricks => `
-                      <button type="button" 
-                              class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
-                              onclick="setScoreFormTricks(${tricks})">
-                        ${tricks}
-                      </button>
-                    `).join('')}
-                  </div>
+                  <label class="form-label">Result</label>
+                  ${state.scoreForm.level ? `
+                    <div class="tricks-buttons">
+                      ${(() => {
+                        const level = state.scoreForm.level;
+                        const buttons = [];
+                        
+                        // Down tricks: -3, -2, -1
+                        for (let down = 3; down >= 1; down--) {
+                          const tricks = level + 6 - down;
+                          buttons.push(`
+                            <button type="button" 
+                                    class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
+                                    onclick="setScoreFormTricks(${tricks})">
+                              -${down}
+                            </button>
+                          `);
+                        }
+                        
+                        // Made tricks: contract level through 7
+                        for (let made = level; made <= 7; made++) {
+                          const tricks = made + 6;
+                          buttons.push(`
+                            <button type="button" 
+                                    class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
+                                    onclick="setScoreFormTricks(${tricks})">
+                              ${made}
+                            </button>
+                          `);
+                        }
+                        
+                        return buttons.join('');
+                      })()}
+                    </div>
+                  ` : `
+                    <div style="color: #888; font-style: italic; padding: 1rem; text-align: center;">
+                      Select a contract level first
+                    </div>
+                  `}
                 </div>
 
                 <button type="submit" class="submit-score-btn">
@@ -2908,6 +2945,27 @@
 
     function setScoreFormBoard(value) {
       state.scoreForm.board = value;
+      
+      // Check if this board already has a score recorded
+      const existingScore = state.gameData?.tables?.[state.tableNumber]?.scores?.[state.currentRound]?.[value];
+      
+      if (existingScore) {
+        // Prefill the form with existing data
+        console.log('Prefilling form with existing score:', existingScore);
+        state.scoreForm.level = existingScore.level;
+        state.scoreForm.strain = existingScore.strain;
+        state.scoreForm.double = existingScore.double || '';
+        state.scoreForm.declarer = existingScore.declarer;
+        state.scoreForm.tricksTaken = existingScore.result;
+      } else {
+        // Clear the form for new entry
+        state.scoreForm.level = null;
+        state.scoreForm.strain = null;
+        state.scoreForm.double = '';
+        state.scoreForm.declarer = null;
+        state.scoreForm.tricksTaken = null;
+      }
+      
       render();
     }
 
@@ -2923,6 +2981,16 @@
 
     function setScoreFormDouble(value) {
       state.scoreForm.double = value;
+      render();
+    }
+
+    function toggleDouble(value) {
+      // Toggle behavior: clicking selected button unselects it
+      if (state.scoreForm.double === value) {
+        state.scoreForm.double = '';
+      } else {
+        state.scoreForm.double = value;
+      }
       render();
     }
 
