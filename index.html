@@ -2902,6 +2902,7 @@
           gameId: state.gameId,
           tableNumber: state.tableNumber,
           sessionId: state.sessionId,
+          adminToken: state.adminToken,  // Save admin token for reconnection
           boardsPerRound: state.boardsPerRound,
           currentRound: state.currentRound,
           tablePlayers: state.tablePlayers,
@@ -2927,6 +2928,7 @@
           state.gameId = savedState.gameId || '';
           state.tableNumber = savedState.tableNumber || null;
           state.sessionId = savedState.sessionId || state.sessionId; // Restore to maintain table lock
+          state.adminToken = savedState.adminToken || null;  // Restore admin token
           state.boardsPerRound = savedState.boardsPerRound || 4;
           state.currentRound = savedState.currentRound || 1;
           state.tablePlayers = savedState.tablePlayers || { north: '', south: '', east: '', west: '' };
@@ -2942,17 +2944,30 @@
           };
           
           // If we were in an active game, reconnect
-          if (state.gameId && (state.screen === 'playing' || state.screen === 'roundWaiting' || state.screen === 'roundEnd' || state.screen === 'tableSetup' || state.screen === 'gameSummary')) {
+          if (state.gameId && (state.screen === 'playing' || state.screen === 'roundWaiting' || state.screen === 'roundEnd' || state.screen === 'tableSetup' || state.screen === 'gameSummary' || state.screen === 'gameManagement')) {
+            // Build headers for fetch
+            const headers = {};
+            if (state.adminToken && state.screen === 'gameManagement') {
+              headers['X-Admin-Token'] = state.adminToken;
+            }
+            
             // Fetch latest game data
-            fetch(`${API_URL}/games/${state.gameId}`)
+            fetch(`${API_URL}/games/${state.gameId}`, { headers })
               .then(response => response.ok ? response.json() : null)
               .then(data => {
                 if (data) {
                   state.gameData = data;
                   
+                  console.log('Reconnecting to screen:', state.screen);
+                  console.log('Game data loaded:', data.gameId);
+                  
+                  // Always update currentRound for gameManagement screen
+                  if (state.screen === 'gameManagement') {
+                    state.currentRound = data.currentRound;
+                  }
                   // Only update currentRound if we're not on the round end or waiting screens
                   // (to prevent confusion when reconnecting while viewing results)
-                  if (state.screen !== 'roundEnd' && state.screen !== 'roundWaiting') {
+                  else if (state.screen !== 'roundEnd' && state.screen !== 'roundWaiting') {
                     state.currentRound = data.currentRound;
                   }
                   
