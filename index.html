@@ -1615,8 +1615,16 @@
       }
       
       const level = scoreData.level;
-      // Use actual colored suit symbols
-      const strain = scoreData.strain === 'NT' ? 'N' : scoreData.strain; // Keep NT as 'N', suits are already symbols
+      
+      // Convert letter codes to symbols if needed
+      let strainSymbol;
+      if (scoreData.strain === 'C' || scoreData.strain === '♣') strainSymbol = '♣';
+      else if (scoreData.strain === 'D' || scoreData.strain === '♦') strainSymbol = '♦';
+      else if (scoreData.strain === 'H' || scoreData.strain === '♥') strainSymbol = '♥';
+      else if (scoreData.strain === 'S' || scoreData.strain === '♠') strainSymbol = '♠';
+      else if (scoreData.strain === 'NT') strainSymbol = 'N';
+      else strainSymbol = scoreData.strain; // fallback
+      
       const declarer = scoreData.declarer.charAt(0).toUpperCase();
       const doubling = scoreData.double || '';
       
@@ -1628,28 +1636,28 @@
       
       // Build compact string with colored suit (four-color scheme)
       let compact;
-      if (scoreData.strain === '♥') {
+      if (strainSymbol === '♥') {
         // Hearts - red
-        compact = `<strong>${level}<span style="color: #f44336;">${strain}</span>${doubling}${declarer}${resultStr}</strong>`;
-      } else if (scoreData.strain === '♦') {
+        compact = `<strong>${level}<span style="color: #f44336;">${strainSymbol}</span>${doubling}${declarer}${resultStr}</strong>`;
+      } else if (strainSymbol === '♦') {
         // Diamonds - orange
-        compact = `<strong>${level}<span style="color: #ff9800;">${strain}</span>${doubling}${declarer}${resultStr}</strong>`;
-      } else if (scoreData.strain === '♠') {
+        compact = `<strong>${level}<span style="color: #ff9800;">${strainSymbol}</span>${doubling}${declarer}${resultStr}</strong>`;
+      } else if (strainSymbol === '♠') {
         // Spades - blue
-        compact = `<strong>${level}<span style="color: #2196f3;">${strain}</span>${doubling}${declarer}${resultStr}</strong>`;
-      } else if (scoreData.strain === '♣') {
+        compact = `<strong>${level}<span style="color: #2196f3;">${strainSymbol}</span>${doubling}${declarer}${resultStr}</strong>`;
+      } else if (strainSymbol === '♣') {
         // Clubs - green
-        compact = `<strong>${level}<span style="color: #4caf50;">${strain}</span>${doubling}${declarer}${resultStr}</strong>`;
+        compact = `<strong>${level}<span style="color: #4caf50;">${strainSymbol}</span>${doubling}${declarer}${resultStr}</strong>`;
       } else {
         // NT - no color
-        compact = `<strong>${level}${strain}${doubling}${declarer}${resultStr}</strong>`;
+        compact = `<strong>${level}${strainSymbol}${doubling}${declarer}${resultStr}</strong>`;
       }
       
       // Human readable description
       const strainName = scoreData.strain === 'NT' ? 'NT' : 
-                         scoreData.strain === '♣' ? 'Clubs' :
-                         scoreData.strain === '♦' ? 'Diamonds' :
-                         scoreData.strain === '♥' ? 'Hearts' : 'Spades';
+                         scoreData.strain === 'C' || scoreData.strain === '♣' ? 'Clubs' :
+                         scoreData.strain === 'D' || scoreData.strain === '♦' ? 'Diamonds' :
+                         scoreData.strain === 'H' || scoreData.strain === '♥' ? 'Hearts' : 'Spades';
       const doublingName = doubling === 'X' ? ' doubled' : doubling === 'XX' ? ' redoubled' : '';
       const declarerName = scoreData.declarer;
       const resultName = diff > 0 ? `making ${diff} overtrick${diff > 1 ? 's' : ''}` :
@@ -2590,12 +2598,30 @@
 
           <!-- Logout buttons (side by side) -->
           <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 1rem; margin-bottom: 0.5rem;">
-            <button class="secondary-button" onclick="logoutTable(1)" style="background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336;">
-              🚪 Logout Table 1
-            </button>
-            <button class="secondary-button" onclick="logoutTable(2)" style="background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336;">
-              🚪 Logout Table 2
-            </button>
+            ${(() => {
+              const table1Locked = state.gameData?.tables?.[1]?.sessionId;
+              const table2Locked = state.gameData?.tables?.[2]?.sessionId;
+              return `
+                <button class="secondary-button" 
+                        onclick="logoutTable(1)" 
+                        ${!table1Locked ? 'disabled' : ''}
+                        style="background: ${table1Locked ? 'rgba(244, 67, 54, 0.2)' : 'rgba(128, 128, 128, 0.2)'}; 
+                               border-color: ${table1Locked ? 'rgba(244, 67, 54, 0.5)' : 'rgba(128, 128, 128, 0.5)'}; 
+                               color: ${table1Locked ? '#f44336' : '#888'}; 
+                               ${!table1Locked ? 'cursor: not-allowed; opacity: 0.5;' : ''}">
+                  ${table1Locked ? '🚪 Logout Table 1' : '🔓 Table 1 Unlocked'}
+                </button>
+                <button class="secondary-button" 
+                        onclick="logoutTable(2)" 
+                        ${!table2Locked ? 'disabled' : ''}
+                        style="background: ${table2Locked ? 'rgba(244, 67, 54, 0.2)' : 'rgba(128, 128, 128, 0.2)'}; 
+                               border-color: ${table2Locked ? 'rgba(244, 67, 54, 0.5)' : 'rgba(128, 128, 128, 0.5)'}; 
+                               color: ${table2Locked ? '#f44336' : '#888'}; 
+                               ${!table2Locked ? 'cursor: not-allowed; opacity: 0.5;' : ''}">
+                  ${table2Locked ? '🚪 Logout Table 2' : '🔓 Table 2 Unlocked'}
+                </button>
+              `;
+            })()}
           </div>
 
           <!-- Refresh button with larger gap above -->
