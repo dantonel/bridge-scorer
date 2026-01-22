@@ -112,6 +112,27 @@
       transform: translateY(-2px);
     }
 
+    .logout-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 0.5rem 1rem;
+      background: rgba(244, 67, 54, 0.2);
+      border: 2px solid rgba(244, 67, 54, 0.5);
+      color: #f44336;
+      font-size: 0.9rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .logout-button:hover {
+      background: rgba(244, 67, 54, 0.3);
+      border-color: #f44336;
+      transform: translateY(-2px);
+    }
+
     .config-section {
       margin-bottom: 2rem;
     }
@@ -765,7 +786,7 @@
   <div id="app" class="app-container"></div>
 
   <script>
-    const API_URL = window.location.origin + '/api';
+    const API_URL = 'http://localhost:3001/api';
     
     // State
     let state = {
@@ -1812,6 +1833,7 @@
       
       return `
         <div class="game-container">
+          <button class="logout-button" onclick="logoutAndClear()">🚪 Logout</button>
           <div class="round-header">
             <div class="round-info">
               <div class="game-id-small">Game: ${state.gameId}</div>
@@ -2000,6 +2022,7 @@
       
       return `
         <div class="game-container">
+          <button class="logout-button" onclick="logoutAndClear()">🚪 Logout</button>
           <div class="round-header">
             <div class="round-info">
               <div class="game-id-small">Game: ${state.gameId}</div>
@@ -2052,6 +2075,7 @@
 
       return `
         <div class="game-container">
+          <button class="logout-button" onclick="logoutAndClear()">🚪 Logout</button>
           <div class="results-header">
             <h1 class="results-title">
               ${isGameComplete ? 'Final Results' : `Round ${state.currentRound} Complete`}
@@ -2167,6 +2191,7 @@
       
       return `
         <div class="game-container">
+          <button class="logout-button" onclick="logoutAndClear()">🚪 Logout</button>
           <div class="results-header">
             <h1 class="results-title">📊 Full Game Summary</h1>
             <p class="game-id-small">Game: ${state.gameId}</p>
@@ -2480,6 +2505,9 @@
             <button class="secondary-button" onclick="changeScreen('start')">
               ← Exit Management
             </button>
+            <button class="secondary-button" onclick="logoutAndClear()" style="background: #f44336;">
+              🚪 Logout & Clear Data
+            </button>
           </div>
         </div>
       `;
@@ -2567,6 +2595,39 @@
       state.tableNumber = null;
       state.screen = 'gameManagement';
       render();
+    }
+
+    function logoutAndClear() {
+      if (confirm('Are you sure you want to logout? This will clear all local data including your admin access to this game.')) {
+        stopSync();
+        clearLocalStorage();
+        
+        // Reset state completely
+        state = {
+          screen: 'start',
+          gameId: '',
+          tableNumber: null,
+          sessionId: Math.random().toString(36).substring(2, 15),
+          adminToken: null,
+          isManagementMode: false,
+          boardsPerRound: 4,
+          currentRound: 1,
+          tablePlayers: { north: '', south: '', east: '', west: '' },
+          gameData: null,
+          joinGameIdInput: '',
+          joinTableInput: '',
+          scoreForm: { 
+            board: 1, 
+            level: null,
+            strain: null,
+            double: '',
+            declarer: '',
+            tricksTaken: null
+          }
+        };
+        
+        render();
+      }
     }
 
     // Event handlers
