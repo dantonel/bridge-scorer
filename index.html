@@ -1183,6 +1183,25 @@
           
           // Check if both tables completed (for stopping poll on roundWaiting)
           if (state.screen === 'roundWaiting') {
+            // First check if OUR table is still complete
+            const thisTableScores = data.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
+            let thisTableComplete = true;
+            for (let i = 1; i <= state.boardsPerRound; i++) {
+              const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+              if (!thisTableScores[boardNum]) {
+                thisTableComplete = false;
+                break;
+              }
+            }
+            
+            // If our table is no longer complete, go back to playing
+            if (!thisTableComplete) {
+              console.log('Our table no longer complete while on roundWaiting, going back to playing');
+              changeScreen('playing');
+              return; // Exit early, render will be called by changeScreen
+            }
+            
+            // Check if both tables completed
             const table1Scores = data.tables?.[1]?.scores?.[state.currentRound] || {};
             const table2Scores = data.tables?.[2]?.scores?.[state.currentRound] || {};
             let bothTablesComplete = true;
@@ -1215,8 +1234,8 @@
             // If round just completed, transition to roundWaiting
             if (thisTableComplete) {
               console.log('Round completed while on playing screen, transitioning to roundWaiting');
-              state.screen = 'roundWaiting';
-              // Sync will continue to check when other table finishes
+              changeScreen('roundWaiting');
+              return; // Exit early, changeScreen calls render
             }
           }
           
@@ -1371,8 +1390,7 @@
         declarer: '', 
         tricksTaken: null
       };
-      state.screen = 'playing';
-      render();
+      changeScreen('playing');
     }
 
     function generateGameId() {
