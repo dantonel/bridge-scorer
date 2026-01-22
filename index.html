@@ -434,10 +434,16 @@
     }
 
     /* Button groups for score entry */
-    .board-buttons, .declarer-buttons, .level-buttons, .strain-buttons, .double-buttons, .tricks-buttons {
+    .board-buttons, .declarer-buttons, .level-buttons, .strain-buttons, .double-buttons {
       display: flex;
       gap: 0.5rem;
       flex-wrap: wrap;
+    }
+    
+    .tricks-buttons {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
     }
 
     .board-btn, .declarer-btn, .level-btn, .strain-btn, .double-btn, .tricks-btn {
