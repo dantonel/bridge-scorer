@@ -1200,6 +1200,26 @@
             }
           }
           
+          // Check if on playing screen and round is now complete (e.g., score added via management)
+          if (state.screen === 'playing' && state.tableNumber) {
+            const thisTableScores = data.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
+            let thisTableComplete = true;
+            for (let i = 1; i <= state.boardsPerRound; i++) {
+              const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+              if (!thisTableScores[boardNum]) {
+                thisTableComplete = false;
+                break;
+              }
+            }
+            
+            // If round just completed, transition to roundWaiting
+            if (thisTableComplete) {
+              console.log('Round completed while on playing screen, transitioning to roundWaiting');
+              state.screen = 'roundWaiting';
+              // Sync will continue to check when other table finishes
+            }
+          }
+          
           // Only update if data has actually changed
           if (JSON.stringify(data) !== JSON.stringify(state.gameData)) {
             state.gameData = data;
@@ -2938,8 +2958,46 @@
       state.tablePlayers[position] = value;
     }
 
-    function setScoreFormBoard(value) {
+    async function setScoreFormBoard(value) {
       state.scoreForm.board = value;
+      
+      // Poll once to check for updates (e.g., admin might have completed round)
+      if (state.gameId) {
+        try {
+          const response = await fetch(`${API_URL}/games/${state.gameId}`);
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Check if round is now complete
+            if (state.tableNumber) {
+              const thisTableScores = data.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
+              let thisTableComplete = true;
+              for (let i = 1; i <= state.boardsPerRound; i++) {
+                const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+                if (!thisTableScores[boardNum]) {
+                  thisTableComplete = false;
+                  break;
+                }
+              }
+              
+              // If round complete, transition to roundWaiting
+              if (thisTableComplete) {
+                console.log('Round completed, transitioning to roundWaiting');
+                state.gameData = data;
+                state.screen = 'roundWaiting';
+                startSync(); // Start polling to detect when other table finishes
+                render();
+                return;
+              }
+            }
+            
+            // Update game data
+            state.gameData = data;
+          }
+        } catch (error) {
+          console.error('Error checking for updates:', error);
+        }
+      }
       
       // Check if this board already has a score recorded
       const existingScore = state.gameData?.tables?.[state.tableNumber]?.scores?.[state.currentRound]?.[value];
@@ -3189,7 +3247,7 @@
     
     function showReconnectionBanner() {
       return `
-        <div style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
+        <div class="reconnection-banner" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
                     background: rgba(76, 175, 80, 0.95); color: white; padding: 1rem 2rem; 
                     border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000;
                     animation: slideDown 0.3s ease;">
