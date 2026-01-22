@@ -1923,26 +1923,21 @@
       
       return `
         <div class="game-container">
+          <!-- Game ID in top-left corner -->
+          <div style="position: fixed; top: 20px; left: 20px; background: rgba(13, 17, 23, 0.95); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.3); font-size: 0.85rem; color: #ffd700; z-index: 999;">
+            ${state.gameId}
+          </div>
+          
           <button class="logout-button" onclick="logoutAndClear()">🚪 Logout</button>
-          <div class="round-header">
-            <div class="round-info">
-              <div class="game-id-small">Game: ${state.gameId}</div>
-              <div class="round-title">Round ${state.currentRound} of 7 - Table ${state.tableNumber}</div>
+          
+          <!-- Compact round info -->
+          <div style="text-align: center; margin-bottom: 1.5rem; padding-top: 1rem;">
+            <div style="font-size: 1.2rem; font-weight: 600; color: #ffd700;">
+              Round ${state.currentRound}/7 • Table ${state.tableNumber}
             </div>
           </div>
 
           <div class="table-card">
-            <h2 class="table-header">Current Positions</h2>
-            
-            <div class="table-layout">
-              ${['north', 'south', 'east', 'west'].map(position => `
-                <div class="player-badge ${position}">
-                  <div class="position-label">${position[0].toUpperCase()}</div>
-                  <div class="player-name">${currentPlayers[position]}</div>
-                </div>
-              `).join('')}
-            </div>
-
             <div class="board-scoring">
               <h3 class="scoring-title">Score Entry</h3>
               <form class="score-form" onsubmit="recordScore(event)">
@@ -1966,12 +1961,12 @@
                   </div>
                 </div>
 
-                <!-- Contract -->\n                <div class="form-group">
+                <!-- Contract -->
+                <div class="form-group">
                   <label class="form-label">Contract</label>
                   
-                  <!-- Level -->
+                  <!-- Level (no subheading) -->
                   <div style="margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.85rem; color: #b8b8d8; margin-bottom: 0.5rem;">Level</div>
                     <div class="level-buttons">
                       ${[1, 2, 3, 4, 5, 6, 7].map(level => `
                         <button type="button" 
@@ -1983,9 +1978,8 @@
                     </div>
                   </div>
                   
-                  <!-- Strain -->
+                  <!-- Strain (no subheading) -->
                   <div style="margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.85rem; color: #b8b8d8; margin-bottom: 0.5rem;">Strain</div>
                     <div class="strain-buttons">
                       <button type="button" 
                               class="strain-btn clubs ${state.scoreForm.strain === 'C' ? 'selected' : ''}" 
@@ -2015,9 +2009,8 @@
                     </div>
                   </div>
                   
-                  <!-- Doubling (toggle buttons) -->
+                  <!-- Doubling (no subheading) -->
                   <div>
-                    <div style="font-size: 0.85rem; color: #b8b8d8; margin-bottom: 0.5rem;">Doubling</div>
                     <div class="double-buttons">
                       <button type="button" 
                               class="double-btn ${state.scoreForm.double === 'X' ? 'selected' : ''}" 
@@ -2033,7 +2026,7 @@
                   </div>
                 </div>
 
-                <!-- Declarer (moved below Contract) -->
+                <!-- Declarer -->
                 <div class="form-group">
                   <label class="form-label">Declarer</label>
                   <div class="declarer-buttons">
@@ -2056,9 +2049,11 @@
                         const level = state.scoreForm.level;
                         const buttons = [];
                         
-                        // Down tricks: -3, -2, -1
-                        for (let down = 3; down >= 1; down--) {
-                          const tricks = level + 6 - down;
+                        // Down tricks: can go down from contract level to 0 tricks
+                        // For example: 7-level contract (13 tricks needed) can be down 1 through down 13
+                        const contractTricks = level + 6;
+                        for (let down = contractTricks; down >= 1; down--) {
+                          const tricks = contractTricks - down;
                           buttons.push(`
                             <button type="button" 
                                     class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
@@ -2068,7 +2063,7 @@
                           `);
                         }
                         
-                        // Made tricks: contract level through 7
+                        // Made tricks: contract level through 7 (making exactly through overtricks)
                         for (let made = level; made <= 7; made++) {
                           const tricks = made + 6;
                           buttons.push(`
