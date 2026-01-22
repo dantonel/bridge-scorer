@@ -2550,9 +2550,6 @@
           `).join('')}
 
           <div class="action-buttons">
-            <button class="secondary-button" onclick="changeScreen('start')">
-              ← Exit Management
-            </button>
             <button class="secondary-button" onclick="logoutAndClear()" style="background: #f44336;">
               🚪 Logout & Clear Data
             </button>
@@ -2563,16 +2560,27 @@
 
     // Game Management helper functions
     async function refreshManagementView() {
-      if (!state.gameId || !state.adminToken) return;
+      console.log('refreshManagementView called');
+      console.log('gameId:', state.gameId);
+      console.log('adminToken:', state.adminToken);
+      
+      if (!state.gameId || !state.adminToken) {
+        console.warn('Missing gameId or adminToken, cannot refresh');
+        return;
+      }
       
       try {
+        console.log('Fetching game data...');
         const response = await fetch(`${API_URL}/games/${state.gameId}`, {
           headers: {
             'X-Admin-Token': state.adminToken
           }
         });
+        console.log('Response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('Game data refreshed:', data);
           state.gameData = data;
           state.currentRound = data.currentRound;
           render();
@@ -2649,12 +2657,32 @@
       if (confirm('Are you sure you want to logout? This will clear all local data including your admin access to this game.')) {
         stopSync();
         
-        // If we're logged into a table, clear the lock on the server
-        if (state.gameId && state.tableNumber && state.sessionId && !state.isManagementMode) {
+        // Check both current state AND localStorage for table locks to clear
+        let tableToUnlock = state.tableNumber;
+        let gameIdToUnlock = state.gameId;
+        let sessionIdToUnlock = state.sessionId;
+        
+        // If not in current state, check localStorage
+        if (!tableToUnlock || !gameIdToUnlock) {
+          try {
+            const saved = localStorage.getItem('bridge-scorer-state');
+            if (saved) {
+              const savedState = JSON.parse(saved);
+              tableToUnlock = tableToUnlock || savedState.tableNumber;
+              gameIdToUnlock = gameIdToUnlock || savedState.gameId;
+              sessionIdToUnlock = sessionIdToUnlock || savedState.sessionId;
+            }
+          } catch (e) {
+            console.error('Error reading saved state:', e);
+          }
+        }
+        
+        // If we have a table lock (from either current state or localStorage), clear it on the server
+        if (gameIdToUnlock && tableToUnlock && sessionIdToUnlock && !state.isManagementMode) {
           try {
             const headers = { 
               'Content-Type': 'application/json',
-              'X-Session-Id': state.sessionId  // Send current sessionId to authorize the unlock
+              'X-Session-Id': sessionIdToUnlock  // Send current sessionId to authorize the unlock
             };
             
             // If admin, use admin token instead
@@ -2663,18 +2691,22 @@
               headers['X-Admin-Token'] = state.adminToken;
             }
             
+            console.log('Clearing table lock:', { gameId: gameIdToUnlock, table: tableToUnlock });
+            
             // Clear the lock
-            await fetch(`${API_URL}/games/${state.gameId}`, {
+            await fetch(`${API_URL}/games/${gameIdToUnlock}`, {
               method: 'PATCH',
               headers: headers,
               body: JSON.stringify({
                 tables: {
-                  [state.tableNumber]: {
+                  [tableToUnlock]: {
                     sessionId: null  // Clear the lock
                   }
                 }
               })
             });
+            
+            console.log('Table lock cleared successfully');
           } catch (error) {
             console.error('Error clearing table lock:', error);
           }
