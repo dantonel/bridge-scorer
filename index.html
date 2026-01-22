@@ -973,7 +973,31 @@
           }
           console.log('VERIFICATION PASSED - I have the lock');
           
-          state.screen = 'tableSetup';
+          // Check if all player names are already filled in
+          const allPlayersFilled = state.tablePlayers.north && 
+                                   state.tablePlayers.south && 
+                                   state.tablePlayers.east && 
+                                   state.tablePlayers.west;
+          
+          if (allPlayersFilled) {
+            // Players already set - skip directly to playing screen
+            console.log('All players already set, skipping to playing screen');
+            const startBoard = (state.currentRound - 1) * state.boardsPerRound + 1;
+            state.scoreForm = { 
+              board: startBoard, 
+              level: null,
+              strain: null,
+              double: '',
+              declarer: '', 
+              tricksTaken: null
+            };
+            state.screen = 'playing';
+          } else {
+            // No players set yet - go to tableSetup to enter names
+            console.log('Players not set, going to tableSetup');
+            state.screen = 'tableSetup';
+          }
+          
           render();
         } else {
           alert('Game not found. Please check the Game ID.');
