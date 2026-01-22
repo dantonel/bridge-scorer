@@ -773,6 +773,8 @@
       gameId: '',
       tableNumber: null,
       sessionId: Math.random().toString(36).substring(2, 15), // Unique session ID for this browser tab
+      adminToken: null, // Admin token for game management access
+      isManagementMode: false, // Whether we're editing from management screen
       boardsPerRound: 4,
       currentRound: 1,
       tablePlayers: { north: '', south: '', east: '', west: '' },
@@ -826,8 +828,11 @@
     // API Functions
     async function createGame() {
       const gameId = generateGameId();
+      const adminToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
       const gameData = {
         gameId,
+        adminToken,
         boardsPerRound: state.boardsPerRound,
         currentRound: 1,
         tables: {
@@ -844,8 +849,13 @@
       });
 
       state.gameId = gameId;
+      state.adminToken = adminToken;
       state.gameData = gameData;
-      state.screen = 'gameCreated';
+      
+      // Store admin token in localStorage for this game
+      localStorage.setItem(`adminToken_${gameId}`, adminToken);
+      
+      state.screen = 'gameManagement';
       render();
     }
 
@@ -984,7 +994,11 @@
                   declarer: state.scoreForm.declarer,
                   score: score,
                   board: parseInt(state.scoreForm.board),
-                  round: state.currentRound
+                  round: state.currentRound,
+                  level: state.scoreForm.level,
+                  strain: state.scoreForm.strain,
+                  double: state.scoreForm.double,
+                  result: state.scoreForm.tricksTaken
                 }
               }
             }
@@ -992,10 +1006,16 @@
         }
       };
       
+      // Build headers
+      const headers = { 'Content-Type': 'application/json' };
+      if (state.isManagementMode && state.adminToken) {
+        headers['X-Admin-Token'] = state.adminToken;
+      }
+      
       // Use PATCH to merge this score without overwriting other table's data
       await fetch(`${API_URL}/games/${state.gameId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(partialUpdate)
       });
 
@@ -1003,6 +1023,15 @@
       const response = await fetch(`${API_URL}/games/${state.gameId}`);
       const updatedGameData = await response.json();
       state.gameData = updatedGameData;
+      
+      // If in management mode, return to management screen after saving
+      if (state.isManagementMode) {
+        state.isManagementMode = false;
+        state.tableNumber = null;
+        state.screen = 'gameManagement';
+        render();
+        return;
+      }
       
       // Check if THIS table has completed all boards for this round
       const thisTableScores = updatedGameData.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
@@ -1620,6 +1649,9 @@
         case 'gameSummary':
           app.innerHTML = renderGameSummaryScreen();
           break;
+        case 'gameManagement':
+          app.innerHTML = renderGameManagementScreen();
+          break;
       }
       
       console.log('Calling attachEventListeners...');
@@ -1812,8 +1844,9 @@
                       const isSelected = state.scoreForm.board == boardNum;
                       return `
                         <button type="button" 
-                                class="board-btn ${isSelected ? 'selected' : ''} ${isRecorded ? 'recorded' : ''}" 
-                                onclick="setScoreFormBoard(${boardNum})">
+                                class="board-btn ${isSelected ? 'selected' : ''} ${isRecorded ? 'recorded' : ''} ${state.isManagementMode ? 'disabled' : ''}" 
+                                onclick="${state.isManagementMode ? '' : `setScoreFormBoard(${boardNum})`}"
+                                ${state.isManagementMode ? 'disabled' : ''}>
                           ${boardNum} ${isRecorded ? '✓' : ''}
                         </button>
                       `;
@@ -1929,6 +1962,11 @@
                 <button type="submit" class="submit-score-btn">
                   Record Score
                 </button>
+                ${state.isManagementMode ? `
+                  <button type="button" class="secondary-button" style="margin-top: 0.5rem;" onclick="cancelManagementEdit()">
+                    Cancel & Return to Management
+                  </button>
+                ` : ''}
               </form>
 
               <div class="recorded-scores">
@@ -2239,6 +2277,296 @@
           </div>
         </div>
       `;
+    }
+
+    function renderGameManagementScreen() {
+      if (!state.gameData) return '';
+      
+      // Build round summaries (similar to game summary, but with edit buttons)
+      const roundSummaries = [];
+      
+      for (let round = 1; round <= state.currentRound; round++) {
+        const table1Scores = state.gameData.tables[1]?.scores?.[round] || {};
+        const table2Scores = state.gameData.tables[2]?.scores?.[round] || {};
+        
+        // Get player positions for this round
+        const table1Positions = getPlayerPositionsForRound(1, round);
+        const table2Positions = getPlayerPositionsForRound(2, round);
+        
+        // Team 1 = NS at Table 1, EW at Table 2
+        // Team 2 = EW at Table 1, NS at Table 2
+        let team1IMPs = 0;
+        let team2IMPs = 0;
+        
+        const boards = [];
+        
+        // Get ALL boards for this round (even if not played)
+        for (let i = 1; i <= state.boardsPerRound; i++) {
+          const boardNum = (round - 1) * state.boardsPerRound + i;
+          const t1Score = table1Scores[boardNum];
+          const t2Score = table2Scores[boardNum];
+          
+          // Calculate IMPs if both scores exist
+          let imps = 0;
+          if (t1Score && t2Score) {
+            const scoreDiff = t1Score.score - t2Score.score;
+            imps = calculateIMPs(scoreDiff);
+            team1IMPs += imps;
+            team2IMPs -= imps;
+          }
+          
+          boards.push({
+            boardNum,
+            table1: t1Score,
+            table2: t2Score,
+            imps
+          });
+        }
+        
+        roundSummaries.push({
+          round,
+          table1Positions,
+          table2Positions,
+          team1IMPs,
+          team2IMPs,
+          boards
+        });
+      }
+      
+      return `
+        <div class="game-container">
+          <div class="results-header">
+            <h1 class="results-title">🎮 Game Management</h1>
+            <p class="game-id-small">Game ID: <strong>${state.gameId}</strong> 
+              <button class="secondary-button" style="display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.85rem; margin-left: 0.5rem;" 
+                      onclick="navigator.clipboard.writeText('${state.gameId}'); alert('Game ID copied!')">
+                Copy ID
+              </button>
+            </p>
+            <p style="color: #b8b8d8; font-size: 0.9rem; margin-top: 0.5rem;">
+              Share this Game ID with players so they can join from their devices
+            </p>
+          </div>
+
+          <div class="action-buttons" style="margin-bottom: 1.5rem;">
+            <button class="primary-button" onclick="refreshManagementView()">
+              🔄 Refresh Scores
+            </button>
+          </div>
+
+          ${roundSummaries.map(summary => `
+            <div class="leaderboard-card" style="margin-bottom: 1.5rem;">
+              <h2 class="leaderboard-title">Round ${summary.round}</h2>
+              
+              <!-- Team Summary -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <!-- Team 1 -->
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px;">
+                  <div style="color: #ffd700; font-weight: 600; margin-bottom: 0.75rem; text-align: center;">Team 1</div>
+                  <div style="font-size: 0.9rem; color: #b8b8d8; margin-bottom: 0.5rem; text-align: center;">
+                    ${summary.table1Positions.north} & ${summary.table1Positions.south}<br>
+                    ${summary.table2Positions.east} & ${summary.table2Positions.west}
+                  </div>
+                  <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team1IMPs >= 0 ? '#4caf50' : '#f44336'};">
+                    ${summary.team1IMPs >= 0 ? '+' : ''}${summary.team1IMPs} IMPs
+                  </div>
+                </div>
+                
+                <!-- Team 2 -->
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px;">
+                  <div style="color: #ffd700; font-weight: 600; margin-bottom: 0.75rem; text-align: center;">Team 2</div>
+                  <div style="font-size: 0.9rem; color: #b8b8d8; margin-bottom: 0.5rem; text-align: center;">
+                    ${summary.table1Positions.east} & ${summary.table1Positions.west}<br>
+                    ${summary.table2Positions.north} & ${summary.table2Positions.south}
+                  </div>
+                  <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team2IMPs >= 0 ? '#4caf50' : '#f44336'};">
+                    ${summary.team2IMPs >= 0 ? '+' : ''}${summary.team2IMPs} IMPs
+                  </div>
+                </div>
+              </div>
+                              
+              <!-- Board Details -->
+              <div style="border-top: 2px solid rgba(255, 215, 0, 0.3); padding-top: 1rem;">
+                <!-- Column Headers -->
+                <div style="display: grid; grid-template-columns: 80px 1fr 1fr auto auto; gap: 1rem; padding: 0 0.75rem 0.5rem 0.75rem; 
+                            border-bottom: 1px solid rgba(255, 215, 0, 0.2); margin-bottom: 0.5rem;">
+                  <div style="color: #ffd700; font-weight: 600; font-size: 0.85rem;"></div>
+                  <div style="color: #ffd700; font-weight: 600; font-size: 0.85rem;">Table 1</div>
+                  <div style="color: #ffd700; font-weight: 600; font-size: 0.85rem;">Table 2</div>
+                  <div style="color: #ffd700; font-weight: 600; font-size: 0.85rem; text-align: center; min-width: 80px;">Net IMPs</div>
+                  <div style="color: #ffd700; font-weight: 600; font-size: 0.85rem; text-align: center; min-width: 80px;">Actions</div>
+                </div>
+                
+                <div style="display: grid; gap: 0.75rem;">
+                  ${summary.boards.map(board => `
+                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 215, 0, 0.15); 
+                                border-radius: 6px; padding: 0.75rem;">
+                      <div style="display: grid; grid-template-columns: 80px 1fr 1fr auto auto; gap: 1rem; align-items: center;">
+                        <strong style="color: #ffd700;">Board ${board.boardNum}</strong>
+                        
+                        <!-- Table 1 -->
+                        <div>
+                          ${board.table1 ? `
+                            <span style="font-size: 0.9rem;">
+                              <strong>${board.table1.contract}</strong> by ${board.table1.declarer.charAt(0).toUpperCase()}
+                            </span>
+                            <span style="font-weight: 700; color: ${board.table1.score >= 0 ? '#4caf50' : '#f44336'}; margin-left: 0.5rem;">
+                              ${board.table1.score >= 0 ? '+' : ''}${board.table1.score}
+                            </span>
+                          ` : `
+                            <span style="color: #888; font-style: italic; font-size: 0.9rem;">Not played yet</span>
+                          `}
+                        </div>
+                        
+                        <!-- Table 2 (flip sign for Team 1 perspective) -->
+                        <div>
+                          ${board.table2 ? `
+                            <span style="font-size: 0.9rem;">
+                              <strong>${board.table2.contract}</strong> by ${board.table2.declarer.charAt(0).toUpperCase()}
+                            </span>
+                            <span style="font-weight: 700; color: ${board.table2.score >= 0 ? '#f44336' : '#4caf50'}; margin-left: 0.5rem;">
+                              ${board.table2.score >= 0 ? '-' : '+'}${Math.abs(board.table2.score)}
+                            </span>
+                          ` : `
+                            <span style="color: #888; font-style: italic; font-size: 0.9rem;">Not played yet</span>
+                          `}
+                        </div>
+                        
+                        <!-- IMPs -->
+                        <div style="text-align: center; min-width: 80px;">
+                          ${board.table1 && board.table2 ? `
+                            <span style="font-weight: 700; font-size: 1.1rem; color: ${board.imps > 0 ? '#4caf50' : board.imps < 0 ? '#f44336' : '#b8b8d8'}">
+                              ${board.imps > 0 ? '+' : ''}${board.imps} ${Math.abs(board.imps) === 1 ? 'IMP' : 'IMPs'}
+                            </span>
+                          ` : `
+                            <span style="color: #888;">-</span>
+                          `}
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div style="text-align: center; min-width: 80px;">
+                          ${board.table1 ? `
+                            <button class="edit-button" onclick="editScore(1, ${summary.round}, ${board.boardNum})" 
+                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.25rem;">
+                              Edit T1
+                            </button>
+                          ` : `
+                            <button class="edit-button" onclick="enterScore(1, ${summary.round}, ${board.boardNum})" 
+                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.25rem;">
+                              Enter T1
+                            </button>
+                          `}
+                          ${board.table2 ? `
+                            <button class="edit-button" onclick="editScore(2, ${summary.round}, ${board.boardNum})" 
+                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                              Edit T2
+                            </button>
+                          ` : `
+                            <button class="edit-button" onclick="enterScore(2, ${summary.round}, ${board.boardNum})" 
+                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                              Enter T2
+                            </button>
+                          `}
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          `).join('')}
+
+          <div class="action-buttons">
+            <button class="secondary-button" onclick="changeScreen('start')">
+              ← Exit Management
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Game Management helper functions
+    async function refreshManagementView() {
+      if (!state.gameId || !state.adminToken) return;
+      
+      try {
+        const response = await fetch(`${API_URL}/games/${state.gameId}`, {
+          headers: {
+            'X-Admin-Token': state.adminToken
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          state.gameData = data;
+          state.currentRound = data.currentRound;
+          render();
+        } else {
+          alert('Failed to refresh game data');
+        }
+      } catch (error) {
+        console.error('Error refreshing:', error);
+        alert('Error refreshing game data');
+      }
+    }
+
+    function enterScore(tableNumber, round, boardNumber) {
+      // Set up state for entering a new score
+      state.tableNumber = tableNumber;
+      state.currentRound = round;
+      state.isManagementMode = true;
+      
+      // Initialize empty score form
+      state.scoreForm = {
+        board: boardNumber,
+        level: null,
+        strain: null,
+        double: '',
+        declarer: null,
+        tricksTaken: null
+      };
+      
+      state.screen = 'playing';
+      render();
+    }
+
+    async function editScore(tableNumber, round, boardNumber) {
+      // Get existing score
+      const existingScore = state.gameData.tables[tableNumber]?.scores?.[round]?.[boardNumber];
+      
+      if (!existingScore) {
+        alert('Score not found');
+        return;
+      }
+      
+      // Confirm edit
+      if (!confirm(`Edit the score for Table ${tableNumber}, Board ${boardNumber}?\n\nCurrent: ${existingScore.contract} by ${existingScore.declarer} = ${existingScore.score >= 0 ? '+' : ''}${existingScore.score}`)) {
+        return;
+      }
+      
+      // Set up state for editing
+      state.tableNumber = tableNumber;
+      state.currentRound = round;
+      state.isManagementMode = true;
+      
+      // Pre-fill score form with existing data
+      state.scoreForm = {
+        board: boardNumber,
+        level: existingScore.level,
+        strain: existingScore.strain,
+        double: existingScore.double || '',
+        declarer: existingScore.declarer,
+        tricksTaken: existingScore.result
+      };
+      
+      state.screen = 'playing';
+      render();
+    }
+
+    function cancelManagementEdit() {
+      state.isManagementMode = false;
+      state.tableNumber = null;
+      state.screen = 'gameManagement';
+      render();
     }
 
     // Event handlers
