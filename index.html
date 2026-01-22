@@ -1955,6 +1955,11 @@
             <div style="font-size: 1.2rem; font-weight: 600; color: #ffd700;">
               Round ${state.currentRound}/7 • Table ${state.tableNumber}
             </div>
+            ${state.isManagementMode ? `
+              <div style="font-size: 0.85rem; color: #ff9800; margin-top: 0.5rem;">
+                📋 Management Mode - Entering score on behalf of table
+              </div>
+            ` : ''}
           </div>
 
           <div class="table-card">
@@ -2593,9 +2598,9 @@
                         <!-- Actions -->
                         <div style="text-align: center; min-width: 80px;">
                           ${board.table1 ? `
-                            <button class="edit-button" onclick="editScore(1, ${summary.round}, ${board.boardNum})" 
-                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.25rem;">
-                              Edit T1
+                            <button class="edit-button" onclick="deleteScoreFromManagement(1, ${summary.round}, ${board.boardNum})" 
+                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.25rem; background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336;">
+                              Delete T1
                             </button>
                           ` : `
                             <button class="edit-button" onclick="enterScore(1, ${summary.round}, ${board.boardNum})" 
@@ -2604,9 +2609,9 @@
                             </button>
                           `}
                           ${board.table2 ? `
-                            <button class="edit-button" onclick="editScore(2, ${summary.round}, ${board.boardNum})" 
-                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-                              Edit T2
+                            <button class="edit-button" onclick="deleteScoreFromManagement(2, ${summary.round}, ${board.boardNum})" 
+                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336;">
+                              Delete T2
                             </button>
                           ` : `
                             <button class="edit-button" onclick="enterScore(2, ${summary.round}, ${board.boardNum})" 
@@ -2687,7 +2692,7 @@
       render();
     }
 
-    async function editScore(tableNumber, round, boardNumber) {
+    async function deleteScoreFromManagement(tableNumber, round, boardNumber) {
       // Get existing score
       const existingScore = state.gameData.tables[tableNumber]?.scores?.[round]?.[boardNumber];
       
@@ -2696,28 +2701,44 @@
         return;
       }
       
-      // Confirm edit
-      if (!confirm(`Edit the score for Table ${tableNumber}, Board ${boardNumber}?\n\nCurrent: ${existingScore.contract} by ${existingScore.declarer} = ${existingScore.score >= 0 ? '+' : ''}${existingScore.score}`)) {
+      // Confirm deletion
+      if (!confirm(`Delete the score for Table ${tableNumber}, Board ${boardNumber}?\n\nCurrent: ${existingScore.contract} by ${existingScore.declarer} = ${existingScore.score >= 0 ? '+' : ''}${existingScore.score}\n\nThis will allow the table to re-enter the score if needed.`)) {
         return;
       }
       
-      // Set up state for editing
-      state.tableNumber = tableNumber;
-      state.currentRound = round;
-      state.isManagementMode = true;
-      
-      // Pre-fill score form with existing data
-      state.scoreForm = {
-        board: boardNumber,
-        level: existingScore.level,
-        strain: existingScore.strain,
-        double: existingScore.double || '',
-        declarer: existingScore.declarer,
-        tricksTaken: existingScore.result
-      };
-      
-      state.screen = 'playing';
-      render();
+      try {
+        // Delete the score using admin token
+        const headers = {
+          'Content-Type': 'application/json',
+          'X-Admin-Token': state.adminToken
+        };
+        
+        const deleteUpdate = {
+          tables: {
+            [tableNumber]: {
+              scores: {
+                [round]: {
+                  [boardNumber]: null  // Setting to null deletes it
+                }
+              }
+            }
+          }
+        };
+        
+        await fetch(`${API_URL}/games/${state.gameId}`, {
+          method: 'PATCH',
+          headers: headers,
+          body: JSON.stringify(deleteUpdate)
+        });
+        
+        // Refresh the management view
+        await refreshManagementView();
+        
+        alert(`Score deleted for Table ${tableNumber}, Board ${boardNumber}`);
+      } catch (error) {
+        console.error('Error deleting score:', error);
+        alert('Failed to delete score');
+      }
     }
 
     function cancelManagementEdit() {
