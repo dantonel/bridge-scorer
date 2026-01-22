@@ -1053,6 +1053,11 @@
         }
       };
       
+      // Include sessionId when not in management mode (for player authentication)
+      if (!state.isManagementMode) {
+        partialUpdate.tables[state.tableNumber].sessionId = state.sessionId;
+      }
+      
       // Build headers
       const headers = { 'Content-Type': 'application/json' };
       if (state.isManagementMode && state.adminToken) {
