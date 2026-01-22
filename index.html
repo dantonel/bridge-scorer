@@ -787,7 +787,7 @@
   <div id="version-badge" style="position: fixed; bottom: 10px; right: 10px; background: rgba(0, 0, 0, 0.7); color: #888; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-family: monospace; z-index: 999; cursor: pointer;" onclick="this.style.display='none'"></div>
 
   <script>
-    const API_URL = 'http://localhost:3001/api';
+    const API_URL = window.location.origin + '/api';
     
     // State
     let state = {
