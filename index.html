@@ -1944,7 +1944,7 @@
       return `
         <div class="game-container">
           <!-- Game ID in top-left corner -->
-          <div style="position: fixed; top: 20px; left: 20px; background: rgba(13, 17, 23, 0.95); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.3); font-size: 0.85rem; color: #ffd700; z-index: 999;">
+          <div class="game-id-badge" style="position: fixed; top: 20px; left: 20px; background: rgba(13, 17, 23, 0.95); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.3); font-size: 0.85rem; color: #ffd700; z-index: 999;">
             ${state.gameId}
           </div>
           
@@ -3138,6 +3138,44 @@
                   console.log('Reconnecting to screen:', state.screen);
                   console.log('Game data loaded:', data.gameId);
                   
+                  // If reconnecting to playing screen, check our table's completion status
+                  if (state.screen === 'playing' && state.tableNumber) {
+                    const thisTableScores = data.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
+                    let thisTableComplete = true;
+                    for (let i = 1; i <= state.boardsPerRound; i++) {
+                      const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+                      if (!thisTableScores[boardNum]) {
+                        thisTableComplete = false;
+                        break;
+                      }
+                    }
+                    
+                    // If our table completed all boards
+                    if (thisTableComplete) {
+                      // Check if BOTH tables are complete
+                      const table1Scores = data.tables?.[1]?.scores?.[state.currentRound] || {};
+                      const table2Scores = data.tables?.[2]?.scores?.[state.currentRound] || {};
+                      let bothTablesComplete = true;
+                      for (let i = 1; i <= state.boardsPerRound; i++) {
+                        const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+                        if (!table1Scores[boardNum] || !table2Scores[boardNum]) {
+                          bothTablesComplete = false;
+                          break;
+                        }
+                      }
+                      
+                      if (bothTablesComplete) {
+                        // Both tables complete - go to roundEnd
+                        console.log('Both tables complete on reconnection, going to roundEnd');
+                        state.screen = 'roundEnd';
+                      } else {
+                        // Only our table complete - go to roundWaiting
+                        console.log('Our table complete on reconnection, going to roundWaiting');
+                        state.screen = 'roundWaiting';
+                      }
+                    }
+                  }
+                  
                   // Always update currentRound for gameManagement screen
                   if (state.screen === 'gameManagement') {
                     state.currentRound = data.currentRound;
@@ -3167,7 +3205,7 @@
                   
                   // Auto-hide after 3 seconds
                   setTimeout(() => {
-                    const bannerEl = document.body.querySelector('[style*="position: fixed"]');
+                    const bannerEl = document.querySelector('.reconnection-banner');
                     if (bannerEl) {
                       bannerEl.style.animation = 'slideUp 0.3s ease';
                       setTimeout(() => bannerEl.remove(), 300);
