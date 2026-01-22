@@ -1590,26 +1590,43 @@
     }
 
     function calculateVPs(impDifference) {
-      // Continuous VP scale (20 VPs total per match)
-      // Uses the standard WBF continuous VP formula
-      // VP = 10 + (15 × IMP) / √(IMP² + 400)
-      
-      if (impDifference === 0) {
-        return { team1VPs: 10, team2VPs: 10 }; // Tie
-      }
+      // Official WBF Continuous VP Scale for 4-board matches
+      // Source: https://www.worldbridge.org/wp-content/uploads/2022/12/WBF_VPScales.pdf
       
       const absIMPs = Math.abs(impDifference);
       
-      // WBF continuous VP formula
-      const winnerVPs = 10 + (15 * absIMPs) / Math.sqrt(absIMPs * absIMPs + 400);
+      // WBF VP table for 4 boards (caps at 30 IMPs = 20.00 VPs)
+      const vpTable = [
+        [0, 10.00], [1, 10.61], [2, 11.20], [3, 11.76], [4, 12.29],
+        [5, 12.80], [6, 13.28], [7, 13.74], [8, 14.18], [9, 14.60],
+        [10, 15.00], [11, 15.38], [12, 15.74], [13, 16.09], [14, 16.42],
+        [15, 16.73], [16, 17.03], [17, 17.31], [18, 17.59], [19, 17.84],
+        [20, 18.09], [21, 18.33], [22, 18.55], [23, 18.76], [24, 18.97],
+        [25, 19.16], [26, 19.34], [27, 19.52], [28, 19.69], [29, 19.85],
+        [30, 20.00]
+      ];
+      
+      // Cap at 30 IMPs
+      const cappedIMPs = Math.min(absIMPs, 30);
+      
+      // Find exact match in table
+      const winnerVPs = vpTable[cappedIMPs][1];
       const loserVPs = 20 - winnerVPs;
       
       if (impDifference > 0) {
         return { 
-          team1VPs: parseFloat(winnerVPs.toFixed(2)), 
-          team2VPs: parseFloat(loserVPs.toFixed(2)) 
+          team1VPs: winnerVPs, 
+          team2VPs: parseFloat(loserVPs.toFixed(2))
+        };
+      } else if (impDifference < 0) {
+        return { 
+          team1VPs: parseFloat(loserVPs.toFixed(2)), 
+          team2VPs: winnerVPs
         };
       } else {
+        return { team1VPs: 10.00, team2VPs: 10.00 };
+      }
+    }
         return { 
           team1VPs: parseFloat(loserVPs.toFixed(2)), 
           team2VPs: parseFloat(winnerVPs.toFixed(2)) 
