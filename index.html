@@ -1215,7 +1215,8 @@
                 [state.currentRound]: {
                   [boardNumber]: null  // Setting to null will delete it
                 }
-              }
+              },
+              sessionId: state.sessionId  // Include sessionId for authorization
             }
           }
         };
@@ -1267,10 +1268,26 @@
       
       // If both tables completed and we haven't advanced yet, advance the round
       if (bothTablesComplete && latestData.currentRound === state.currentRound && state.currentRound < 7) {
-        const roundUpdate = { currentRound: state.currentRound + 1 };
+        // Include sessionId to prove we're a valid player
+        const roundUpdate = { 
+          currentRound: state.currentRound + 1,
+          advancedBy: state.sessionId  // Track who advanced it (for logging/debugging)
+        };
+        
+        const headers = { 'Content-Type': 'application/json' };
+        
+        // If we have a sessionId, include it to prove we're a player
+        if (state.sessionId) {
+          headers['X-Session-Id'] = state.sessionId;
+        }
+        // Or if admin, use admin token
+        if (state.adminToken) {
+          headers['X-Admin-Token'] = state.adminToken;
+        }
+        
         await fetch(`${API_URL}/games/${state.gameId}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify(roundUpdate)
         });
         
@@ -2628,9 +2645,41 @@
       render();
     }
 
-    function logoutAndClear() {
+    async function logoutAndClear() {
       if (confirm('Are you sure you want to logout? This will clear all local data including your admin access to this game.')) {
         stopSync();
+        
+        // If we're logged into a table, clear the lock on the server
+        if (state.gameId && state.tableNumber && state.sessionId && !state.isManagementMode) {
+          try {
+            const headers = { 
+              'Content-Type': 'application/json',
+              'X-Session-Id': state.sessionId  // Send current sessionId to authorize the unlock
+            };
+            
+            // If admin, use admin token instead
+            if (state.adminToken) {
+              delete headers['X-Session-Id'];
+              headers['X-Admin-Token'] = state.adminToken;
+            }
+            
+            // Clear the lock
+            await fetch(`${API_URL}/games/${state.gameId}`, {
+              method: 'PATCH',
+              headers: headers,
+              body: JSON.stringify({
+                tables: {
+                  [state.tableNumber]: {
+                    sessionId: null  // Clear the lock
+                  }
+                }
+              })
+            });
+          } catch (error) {
+            console.error('Error clearing table lock:', error);
+          }
+        }
+        
         clearLocalStorage();
         
         // Reset state completely
@@ -2732,7 +2781,12 @@
 
     async function leaveTableSetup() {
       // Release the table lock
-      if (state.tableNumber && state.gameId) {
+      if (state.tableNumber && state.gameId && state.sessionId) {
+        const headers = {
+          'Content-Type': 'application/json',
+          'X-Session-Id': state.sessionId  // Send sessionId to authorize the unlock
+        };
+        
         const releaseUpdate = {
           tables: {
             [state.tableNumber]: {
@@ -2742,7 +2796,7 @@
         };
         await fetch(`${API_URL}/games/${state.gameId}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify(releaseUpdate)
         });
       }

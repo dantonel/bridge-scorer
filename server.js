@@ -6,7 +6,6 @@ let connecting = false;
 async function getRedisClient() {
   if (!redis) {
     if (connecting) {
-      // Wait for existing connection attempt
       await new Promise(resolve => setTimeout(resolve, 100));
       return getRedisClient();
     }
@@ -34,19 +33,19 @@ async function getRedisClient() {
   return redis;
 }
 
-// Helper function to send JSON response
 function sendJSON(res, statusCode, data) {
   res.status(statusCode).json(data);
 }
 
-// Deep merge helper to merge nested objects
-// null values in source are treated as deletions
 function deepMerge(target, source) {
   const output = { ...target };
   
+  function isObject(item) {
+    return item && typeof item === 'object' && !Array.isArray(item);
+  }
+  
   if (isObject(target) && isObject(source)) {
     Object.keys(source).forEach(key => {
-      // If source value is null, delete the key
       if (source[key] === null) {
         delete output[key];
       } else if (isObject(source[key])) {
@@ -68,15 +67,12 @@ function isObject(item) {
   return item && typeof item === 'object' && !Array.isArray(item);
 }
 
-// Serverless function handler for Vercel
 export default async function handler(req, res) {
   try {
-    // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token, X-Session-Id');
 
-    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
       res.status(200).end();
       return;
@@ -95,20 +91,15 @@ export default async function handler(req, res) {
       
       if (gameJson) {
         const game = JSON.parse(gameJson);
-        
-        // Check if request has admin token
         const adminToken = req.headers['x-admin-token'] || url.searchParams.get('token');
         
-        // If admin token provided, verify it
         if (adminToken) {
           if (game.adminToken !== adminToken) {
             sendJSON(res, 403, { error: 'Invalid admin token' });
             return;
           }
-          // Valid admin token - return full game data
           sendJSON(res, 200, game);
         } else {
-          // No admin token - return game data without admin token (normal player access)
           const { adminToken: _, ...gameWithoutToken } = game;
           sendJSON(res, 200, gameWithoutToken);
         }
@@ -129,14 +120,14 @@ export default async function handler(req, res) {
       }
       
       await client.set(`game:${gameData.gameId}`, JSON.stringify(gameData), {
-        EX: 86400 // Expire after 24 hours
+        EX: 86400
       });
       console.log('Game created successfully:', gameData.gameId);
       sendJSON(res, 201, gameData);
       return;
     }
 
-    // PATCH /api/games/:gameId (partial update - merge changes)
+    // PATCH /api/games/:gameId (partial update)
     if (req.method === 'PATCH' && url.pathname.startsWith('/api/games/')) {
       const gameId = url.pathname.split('/')[3];
       const updates = req.body;
@@ -156,39 +147,82 @@ export default async function handler(req, res) {
       
       const existingGame = JSON.parse(existingJson);
       
-      // Check if this is an admin operation (modifying scores for management)
-      // Admin operations need the admin token
+      // Check authorization for different types of updates
       const adminToken = req.headers['x-admin-token'];
-      const isAdminUpdate = updates.tables && Object.keys(updates.tables).some(tableNum => {
-        return updates.tables[tableNum]?.scores;
-      });
+      const sessionId = req.headers['x-session-id'];
       
-      // If updating scores without being a locked player, require admin token
-      if (isAdminUpdate) {
-        // Check if the update is from a properly locked table
-        const updatingTableNum = Object.keys(updates.tables)[0];
-        const updatingTable = updates.tables[updatingTableNum];
-        const existingTableSession = existingGame.tables?.[updatingTableNum]?.sessionId;
-        
-        // If table has a sessionId and update doesn't match, or update has no sessionId, need admin token
-        if (existingTableSession && (!updatingTable?.sessionId || updatingTable.sessionId !== existingTableSession)) {
-          if (!adminToken || existingGame.adminToken !== adminToken) {
-            sendJSON(res, 403, { error: 'Admin token required for this operation' });
+      // Check if advancing round (updating currentRound)
+      if (updates.hasOwnProperty('currentRound')) {
+        // Require either: admin token OR valid player sessionId (from either table)
+        if (adminToken) {
+          if (existingGame.adminToken !== adminToken) {
+            sendJSON(res, 403, { error: 'Invalid admin token' });
             return;
+          }
+        } else if (sessionId) {
+          // Check if sessionId matches either table
+          const table1Match = existingGame.tables?.[1]?.sessionId === sessionId;
+          const table2Match = existingGame.tables?.[2]?.sessionId === sessionId;
+          if (!table1Match && !table2Match) {
+            sendJSON(res, 403, { error: 'Not authorized to advance round - must be a player in this game' });
+            return;
+          }
+        } else {
+          sendJSON(res, 403, { error: 'Authorization required to advance round' });
+          return;
+        }
+      }
+      
+      // Check if updating table data
+      if (updates.tables) {
+        for (const tableNum of Object.keys(updates.tables)) {
+          const tableUpdate = updates.tables[tableNum];
+          const existingTable = existingGame.tables?.[tableNum];
+          
+          // Check if trying to clear sessionId (logout)
+          if (tableUpdate.hasOwnProperty('sessionId') && tableUpdate.sessionId === null) {
+            // Allow if: has admin token OR has matching sessionId in header
+            if (adminToken) {
+              if (existingGame.adminToken !== adminToken) {
+                sendJSON(res, 403, { error: 'Invalid admin token' });
+                return;
+              }
+            } else if (sessionId) {
+              if (existingTable?.sessionId !== sessionId) {
+                sendJSON(res, 403, { error: 'Invalid session - cannot unlock this table' });
+                return;
+              }
+            } else {
+              sendJSON(res, 403, { error: 'Authorization required to unlock table' });
+              return;
+            }
+          }
+          
+          // Check if updating scores
+          if (tableUpdate.scores) {
+            const existingTableSession = existingTable?.sessionId;
+            
+            // Allow if: admin token OR matching sessionId in update body
+            if (existingTableSession && existingTableSession !== tableUpdate.sessionId) {
+              if (!adminToken || existingGame.adminToken !== adminToken) {
+                sendJSON(res, 403, { error: 'Not authorized to update this table' });
+                return;
+              }
+            }
           }
         }
       }
       
-      // Deep merge the updates into existing game
+      // All checks passed, perform the update
       const updatedGame = deepMerge(existingGame, updates);
       await client.set(`game:${gameId}`, JSON.stringify(updatedGame), {
-        EX: 86400 // Refresh expiration to 24 hours
+        EX: 86400
       });
       sendJSON(res, 200, updatedGame);
       return;
     }
 
-    // PUT /api/games/:gameId (full replace - for backward compatibility)
+    // PUT /api/games/:gameId
     if (req.method === 'PUT' && url.pathname.startsWith('/api/games/')) {
       const gameId = url.pathname.split('/')[3];
       const gameData = req.body;
@@ -200,13 +234,12 @@ export default async function handler(req, res) {
       }
       
       await client.set(`game:${gameId}`, JSON.stringify(gameData), {
-        EX: 86400 // Refresh expiration to 24 hours
+        EX: 86400
       });
       sendJSON(res, 200, gameData);
       return;
     }
 
-    // 404 for other routes
     res.status(404).json({ error: 'Not Found' });
   } catch (error) {
     console.error('Server error:', error);
