@@ -83,6 +83,17 @@ export default async function handler(req, res) {
     const client = await getRedisClient();
     const url = new URL(req.url, `https://${req.headers.host}`);
     
+    // GET /api/version - Return build info
+    if (req.method === 'GET' && url.pathname === '/api/version') {
+      sendJSON(res, 200, {
+        buildId: process.env.VERCEL_GIT_COMMIT_SHA || 'dev',
+        deploymentUrl: process.env.VERCEL_URL || 'localhost',
+        environment: process.env.VERCEL_ENV || 'development',
+        gitBranch: process.env.VERCEL_GIT_COMMIT_REF || 'local'
+      });
+      return;
+    }
+    
     // GET /api/games/:gameId
     if (req.method === 'GET' && url.pathname.startsWith('/api/games/')) {
       const gameId = url.pathname.split('/')[3];
