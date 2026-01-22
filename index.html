@@ -804,6 +804,8 @@
       adminToken: null, // Admin token for game management access
       isManagementMode: false, // Whether we're editing from management screen
       boardsPerRound: 4,
+      showVPs: true, // Whether to display VPs in results
+      impBonus: 0, // IMP bonus for winning team (0 or 3)
       currentRound: 1,
       tablePlayers: { north: '', south: '', east: '', west: '' },
       gameData: null,
@@ -867,6 +869,8 @@
         gameId,
         adminToken,
         boardsPerRound: state.boardsPerRound,
+        showVPs: state.showVPs,
+        impBonus: state.impBonus,
         currentRound: 1,
         tables: {
           1: { players: {}, scores: {}, sessionId: null },
@@ -943,6 +947,8 @@
           state.tableNumber = parseInt(state.joinTableInput);
           state.gameData = data;
           state.boardsPerRound = data.boardsPerRound;
+          state.showVPs = data.showVPs !== undefined ? data.showVPs : true; // Default to true for old games
+          state.impBonus = data.impBonus !== undefined ? data.impBonus : 0; // Default to 0 for old games
           state.currentRound = data.currentRound;
           
           // Initialize tablePlayers with empty strings for all positions
@@ -1783,8 +1789,35 @@
           }
         }
         
-        // After processing all boards in the round, calculate VPs
+        // After processing all boards in the round, calculate VPs (before bonus)
         const vpResult = calculateVPs(roundIMPsForTeam1);
+        
+        // Apply IMP bonus to winning team AFTER VP calculation
+        const impBonus = state.gameData?.impBonus || 0;
+        if (impBonus > 0 && roundIMPsForTeam1 !== 0) {
+          const winningTeam = roundIMPsForTeam1 > 0 ? 1 : 2;
+          const bonusIMPs = impBonus;
+          
+          if (winningTeam === 1) {
+            // Team 1 gets bonus
+            const team1BonusPlayers = [
+              table1Positions.north,
+              table1Positions.south,
+              table2Positions.east,
+              table2Positions.west
+            ];
+            team1BonusPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) + bonusIMPs; });
+          } else {
+            // Team 2 gets bonus
+            const team2BonusPlayers = [
+              table1Positions.east,
+              table1Positions.west,
+              table2Positions.north,
+              table2Positions.south
+            ];
+            team2BonusPlayers.forEach(p => { if (p) playerIMPs[p] = (playerIMPs[p] || 0) + bonusIMPs; });
+          }
+        }
         
         // Team 1 = NS at Table 1, EW at Table 2
         const team1Players = [
@@ -1987,6 +2020,38 @@
               `).join('')}
             </div>
           </div>
+          
+          <div class="config-section">
+            <h2 class="section-title">Victory Points</h2>
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+              <button class="board-option ${state.showVPs ? 'active' : ''}" 
+                      onclick="state.showVPs = true; render();">
+                Show VPs
+              </button>
+              <button class="board-option ${!state.showVPs ? 'active' : ''}" 
+                      onclick="state.showVPs = false; render();">
+                Hide VPs
+              </button>
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <h2 class="section-title">IMP Bonus</h2>
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+              <button class="board-option ${state.impBonus === 0 ? 'active' : ''}" 
+                      onclick="state.impBonus = 0; render();">
+                No Bonus
+              </button>
+              <button class="board-option ${state.impBonus === 3 ? 'active' : ''}" 
+                      onclick="state.impBonus = 3; render();">
+                +3 IMP Bonus
+              </button>
+            </div>
+            <p style="color: #b8b8d8; font-size: 0.85rem; text-align: center; margin-top: 0.5rem;">
+              Bonus applied after VP calculation
+            </p>
+          </div>
+          
           <button class="primary-button" onclick="createGame()">
             Create Game
           </button>
@@ -2383,9 +2448,11 @@
                   <div class="imps-score ${player.imps >= 0 ? 'positive' : 'negative'}">
                     ${player.imps >= 0 ? '+' : ''}${player.imps} IMPs
                   </div>
-                  <div style="color: #b8b8d8; font-size: 0.95rem; font-weight: 600; min-width: 80px; text-align: right;">
-                    ${player.vps.toFixed(1)} VPs
-                  </div>
+                  ${state.showVPs ? `
+                    <div style="color: #b8b8d8; font-size: 0.95rem; font-weight: 600; min-width: 80px; text-align: right;">
+                      ${player.vps.toFixed(1)} VPs
+                    </div>
+                  ` : ''}
                 </div>
               `).join('')}
             </div>
@@ -2511,9 +2578,11 @@
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team1IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team1IMPs >= 0 ? '+' : ''}${summary.team1IMPs} IMPs
                   </div>
-                  <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
-                    ${summary.team1VPs.toFixed(1)} VPs
-                  </div>
+                  ${state.showVPs ? `
+                    <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
+                      ${summary.team1VPs.toFixed(1)} VPs
+                    </div>
+                  ` : ''}
                 </div>
                 
                 <!-- Team 2 (EW at Table 1 + NS at Table 2) -->
@@ -2526,9 +2595,11 @@
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team2IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team2IMPs >= 0 ? '+' : ''}${summary.team2IMPs} IMPs
                   </div>
-                  <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
-                    ${summary.team2VPs.toFixed(1)} VPs
-                  </div>
+                  ${state.showVPs ? `
+                    <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
+                      ${summary.team2VPs.toFixed(1)} VPs
+                    </div>
+                  ` : ''}
                 </div>
               </div>
                               
@@ -2735,9 +2806,11 @@
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team1IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team1IMPs >= 0 ? '+' : ''}${summary.team1IMPs} IMPs
                   </div>
-                  <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
-                    ${summary.team1VPs.toFixed(1)} VPs
-                  </div>
+                  ${state.showVPs ? `
+                    <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
+                      ${summary.team1VPs.toFixed(1)} VPs
+                    </div>
+                  ` : ''}
                 </div>
                 
                 <!-- Team 2 -->
@@ -2750,9 +2823,11 @@
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team2IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team2IMPs >= 0 ? '+' : ''}${summary.team2IMPs} IMPs
                   </div>
-                  <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
-                    ${summary.team2VPs.toFixed(1)} VPs
-                  </div>
+                  ${state.showVPs ? `
+                    <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
+                      ${summary.team2VPs.toFixed(1)} VPs
+                    </div>
+                  ` : ''}
                 </div>
               </div>
                               
