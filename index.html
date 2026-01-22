@@ -1958,13 +1958,11 @@
           </div>
 
           <div class="table-card">
-            <div class="board-scoring">
-              <h3 class="scoring-title">Score Entry</h3>
-              <form class="score-form" onsubmit="recordScore(event)">
-                
-                <!-- Board Number Selection -->
-                <div class="form-group">
-                  <label class="form-label">Board Number</label>
+            <form class="score-form" onsubmit="recordScore(event)">
+              
+              <!-- Board Number Selection -->
+              <div class="form-group">
+                <label class="form-label">Board Number</label>
                   <div class="board-buttons">
                     ${getBoardNumbersForRound(state.currentRound, state.boardsPerRound).map(boardNum => {
                       const isRecorded = recordedScores.some(s => s.board === boardNum);
@@ -2123,7 +2121,6 @@
                   </div>
                 `).join('')}
               </div>
-            </div>
           </div>
         </div>
       `;
