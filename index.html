@@ -786,7 +786,7 @@
   <div id="app" class="app-container"></div>
 
   <script>
-    const API_URL = 'http://localhost:3001/api';
+    const API_URL = window.location.origin + '/api';
     
     // State
     let state = {
@@ -848,8 +848,12 @@
 
     // API Functions
     async function createGame() {
+      console.log('createGame called');
       const gameId = generateGameId();
       const adminToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      console.log('Generated gameId:', gameId);
+      console.log('API_URL:', API_URL);
       
       const gameData = {
         gameId,
@@ -863,21 +867,43 @@
         created: Date.now()
       };
 
-      const response = await fetch(`${API_URL}/games`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(gameData)
-      });
+      try {
+        console.log('Sending POST request to:', `${API_URL}/games`);
+        console.log('Request body:', JSON.stringify(gameData));
+        
+        const response = await fetch(`${API_URL}/games`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(gameData)
+        });
 
-      state.gameId = gameId;
-      state.adminToken = adminToken;
-      state.gameData = gameData;
-      
-      // Store admin token in localStorage for this game
-      localStorage.setItem(`adminToken_${gameId}`, adminToken);
-      
-      state.screen = 'gameManagement';
-      render();
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('Failed to create game:', error);
+          alert(`Failed to create game: ${error.error || 'Unknown error'}`);
+          return;
+        }
+
+        const createdGame = await response.json();
+        console.log('Game created successfully:', createdGame);
+
+        state.gameId = gameId;
+        state.adminToken = adminToken;
+        state.gameData = gameData;
+        
+        // Store admin token in localStorage for this game
+        localStorage.setItem(`adminToken_${gameId}`, adminToken);
+        
+        state.screen = 'gameManagement';
+        render();
+      } catch (error) {
+        console.error('Error creating game:', error);
+        console.error('Error stack:', error.stack);
+        alert('Failed to create game. Please check your connection and try again.');
+      }
     }
 
     async function joinGame() {
