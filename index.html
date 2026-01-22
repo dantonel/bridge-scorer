@@ -1595,6 +1595,41 @@
         [220, 5], [270, 6], [320, 7], [370, 8], [430, 9],
         [500, 10], [600, 11], [750, 12], [900, 13], [1100, 14],
         [1300, 15], [1500, 16], [1750, 17], [2000, 18], [2250, 19],
+    
+    function formatCompactResult(scoreData) {
+      // Format: 1NEX-1 (level, strain, declarer, doubling, result)
+      // scoreData has: level, strain, declarer, double, result
+      if (!scoreData) return null;
+      
+      const level = scoreData.level;
+      const strain = scoreData.strain === 'NT' ? 'N' : scoreData.strain;
+      const declarer = scoreData.declarer.charAt(0).toUpperCase();
+      const doubling = scoreData.double || '';
+      
+      // Calculate result relative to contract
+      const contractTricks = level + 6;
+      const tricksTaken = scoreData.result;
+      const diff = tricksTaken - contractTricks;
+      const resultStr = diff >= 0 ? `+${diff}` : `${diff}`;
+      
+      const compact = `${level}${strain}${doubling}${declarer}${resultStr}`;
+      
+      // Human readable description
+      const strainName = scoreData.strain === 'NT' ? 'NT' : 
+                         scoreData.strain === '♣' ? 'Clubs' :
+                         scoreData.strain === '♦' ? 'Diamonds' :
+                         scoreData.strain === '♥' ? 'Hearts' : 'Spades';
+      const doublingName = doubling === 'X' ? ' doubled' : doubling === 'XX' ? ' redoubled' : '';
+      const declarerName = scoreData.declarer;
+      const resultName = diff > 0 ? `making ${diff} overtrick${diff > 1 ? 's' : ''}` :
+                         diff < 0 ? `down ${Math.abs(diff)}` :
+                         'making exactly';
+      
+      return {
+        compact,
+        description: `${level}${strainName}${doublingName}, ${declarerName} declarer, ${resultName}`
+      };
+    }
         [2500, 20], [3000, 21], [3500, 22], [4000, 23], [Infinity, 24]
       ];
       
@@ -2407,7 +2442,10 @@
                         <!-- Table 1 -->\n                        <div>
                           ${board.table1 ? `
                             <span style="font-size: 0.9rem;">
-                              <strong>${board.table1.contract}</strong> by ${board.table1.declarer.charAt(0).toUpperCase()}
+                              <strong>${(() => {
+                                const formatted = formatCompactResult(board.table1);
+                                return formatted ? formatted.compact : board.table1.contract;
+                              })()}</strong>
                             </span>
                             <span style="font-weight: 700; color: ${board.table1.score >= 0 ? '#4caf50' : '#f44336'}; margin-left: 0.5rem;">
                               ${board.table1.score >= 0 ? '+' : ''}${board.table1.score}
@@ -2421,7 +2459,10 @@
                         <div>
                           ${board.table2 ? `
                             <span style="font-size: 0.9rem;">
-                              <strong>${board.table2.contract}</strong> by ${board.table2.declarer.charAt(0).toUpperCase()}
+                              <strong>${(() => {
+                                const formatted = formatCompactResult(board.table2);
+                                return formatted ? formatted.compact : board.table2.contract;
+                              })()}</strong>
                             </span>
                             <span style="font-weight: 700; color: ${board.table2.score >= 0 ? '#f44336' : '#4caf50'}; margin-left: 0.5rem;">
                               ${board.table2.score >= 0 ? '-' : '+'}${Math.abs(board.table2.score)}
@@ -2531,6 +2572,12 @@
             <button class="primary-button" onclick="refreshManagementView()">
               🔄 Refresh Scores
             </button>
+            <button class="secondary-button" onclick="logoutTable(1)" style="background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336;">
+              🚪 Logout Table 1
+            </button>
+            <button class="secondary-button" onclick="logoutTable(2)" style="background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336;">
+              🚪 Logout Table 2
+            </button>
           </div>
 
           ${roundSummaries.map(summary => `
@@ -2587,7 +2634,10 @@
                         <div>
                           ${board.table1 ? `
                             <span style="font-size: 0.9rem;">
-                              <strong>${board.table1.contract}</strong> by ${board.table1.declarer.charAt(0).toUpperCase()}
+                              <strong>${(() => {
+                                const formatted = formatCompactResult(board.table1);
+                                return formatted ? formatted.compact : board.table1.contract;
+                              })()}</strong>
                             </span>
                             <span style="font-weight: 700; color: ${board.table1.score >= 0 ? '#4caf50' : '#f44336'}; margin-left: 0.5rem;">
                               ${board.table1.score >= 0 ? '+' : ''}${board.table1.score}
@@ -2601,7 +2651,10 @@
                         <div>
                           ${board.table2 ? `
                             <span style="font-size: 0.9rem;">
-                              <strong>${board.table2.contract}</strong> by ${board.table2.declarer.charAt(0).toUpperCase()}
+                              <strong>${(() => {
+                                const formatted = formatCompactResult(board.table2);
+                                return formatted ? formatted.compact : board.table2.contract;
+                              })()}</strong>
                             </span>
                             <span style="font-weight: 700; color: ${board.table2.score >= 0 ? '#f44336' : '#4caf50'}; margin-left: 0.5rem;">
                               ${board.table2.score >= 0 ? '-' : '+'}${Math.abs(board.table2.score)}
@@ -2676,6 +2729,43 @@
       }
       
       try {
+    
+    async function logoutTable(tableNumber) {
+      if (!confirm(`Logout whoever is connected to Table ${tableNumber}? This will clear their table lock and allow someone else to join.`)) {
+        return;
+      }
+      
+      try {
+        // Clear the table lock by setting sessionId to null
+        const headers = {
+          'Content-Type': 'application/json',
+          'X-Admin-Token': state.adminToken
+        };
+        
+        const clearLockUpdate = {
+          tables: {
+            [tableNumber]: {
+              sessionId: null,
+              lockedAt: null
+            }
+          }
+        };
+        
+        await fetch(`${API_URL}/games/${state.gameId}`, {
+          method: 'PATCH',
+          headers: headers,
+          body: JSON.stringify(clearLockUpdate)
+        });
+        
+        // Refresh the management view
+        await refreshManagementView();
+        
+        alert(`Table ${tableNumber} logged out successfully`);
+      } catch (error) {
+        console.error('Error logging out table:', error);
+        alert('Failed to logout table');
+      }
+    }
         console.log('Fetching game data...');
         const response = await fetch(`${API_URL}/games/${state.gameId}`, {
           headers: {
