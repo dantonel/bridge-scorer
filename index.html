@@ -897,8 +897,7 @@
         // Store admin token in localStorage for this game
         localStorage.setItem(`adminToken_${gameId}`, adminToken);
         
-        state.screen = 'gameManagement';
-        render();
+        changeScreen('gameManagement');
       } catch (error) {
         console.error('Error creating game:', error);
         console.error('Error stack:', error.stack);
@@ -994,8 +993,7 @@
             if (thisTableComplete) {
               // This table already completed the round - go to waiting screen
               console.log('Round already complete, going to roundWaiting');
-              state.screen = 'roundWaiting';
-              startSync(); // Start polling to detect when other table finishes
+              changeScreen('roundWaiting'); // This will start polling for roundWaiting
             } else {
               // Not complete - go to playing screen
               console.log('All players already set, skipping to playing screen');
@@ -1008,15 +1006,13 @@
                 declarer: '', 
                 tricksTaken: null
               };
-              state.screen = 'playing';
+              changeScreen('playing'); // This will stop joinGame polling
             }
           } else {
             // No players set yet - go to tableSetup to enter names
             console.log('Players not set, going to tableSetup');
-            state.screen = 'tableSetup';
+            changeScreen('tableSetup'); // This will stop joinGame polling
           }
-          
-          render();
         } else {
           alert('Game not found. Please check the Game ID.');
         }
@@ -1050,8 +1046,7 @@
       // Fetch latest game data
       const response = await fetch(`${API_URL}/games/${state.gameId}`);
       state.gameData = await response.json();
-      state.screen = 'playing';
-      render();
+      changeScreen('playing');
     }
 
     async function recordScore(e) {
@@ -1122,8 +1117,7 @@
       if (state.isManagementMode) {
         state.isManagementMode = false;
         state.tableNumber = null;
-        state.screen = 'gameManagement';
-        render();
+        changeScreen('gameManagement');
         return;
       }
       
@@ -1140,9 +1134,7 @@
       
       // If this table completed all boards, go to waiting screen
       if (thisTableComplete) {
-        state.screen = 'roundWaiting';
-        startSync(); // Start polling to detect when other table finishes
-        render();
+        changeScreen('roundWaiting'); // This will start polling
         return;
       }
       
@@ -2706,8 +2698,7 @@
         tricksTaken: null
       };
       
-      state.screen = 'playing';
-      render();
+      changeScreen('playing');
     }
 
     async function deleteScoreFromManagement(tableNumber, round, boardNumber) {
@@ -2762,8 +2753,7 @@
     function cancelManagementEdit() {
       state.isManagementMode = false;
       state.tableNumber = null;
-      state.screen = 'gameManagement';
-      render();
+      changeScreen('gameManagement');
     }
 
     async function logoutAndClear() {
@@ -3210,6 +3200,25 @@
                         console.log('Our table complete on reconnection, going to roundWaiting');
                         state.screen = 'roundWaiting';
                       }
+                    }
+                  }
+                  
+                  // If reconnecting to roundWaiting, check if our table is still complete
+                  if (state.screen === 'roundWaiting' && state.tableNumber) {
+                    const thisTableScores = data.tables[state.tableNumber]?.scores?.[state.currentRound] || {};
+                    let thisTableComplete = true;
+                    for (let i = 1; i <= state.boardsPerRound; i++) {
+                      const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+                      if (!thisTableScores[boardNum]) {
+                        thisTableComplete = false;
+                        break;
+                      }
+                    }
+                    
+                    // If our table is no longer complete, go back to playing
+                    if (!thisTableComplete) {
+                      console.log('Our table no longer complete on reconnection, going to playing');
+                      state.screen = 'playing';
                     }
                   }
                   
