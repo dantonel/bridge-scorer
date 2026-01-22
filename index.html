@@ -1191,6 +1191,7 @@
             // If our table is no longer complete, go back to playing
             if (!thisTableComplete) {
               console.log('Our table no longer complete while on roundWaiting, going back to playing');
+              state.gameData = data; // Update gameData so board status is correct
               changeScreen('playing');
               return; // Exit early, render will be called by changeScreen
             }
