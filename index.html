@@ -917,7 +917,6 @@
           console.log('VERIFICATION PASSED - I have the lock');
           
           state.screen = 'tableSetup';
-          startSync();
           render();
         } else {
           alert('Game not found. Please check the Game ID.');
@@ -1019,6 +1018,7 @@
       // If this table completed all boards, go to waiting screen
       if (thisTableComplete) {
         state.screen = 'roundWaiting';
+        startSync(); // Start polling to detect when other table finishes
         render();
         return;
       }
@@ -1058,6 +1058,26 @@
             return;
           }
           
+          // Check if both tables completed (for roundWaiting → roundEnd transition)
+          if (state.screen === 'roundWaiting') {
+            const table1Scores = data.tables?.[1]?.scores?.[state.currentRound] || {};
+            const table2Scores = data.tables?.[2]?.scores?.[state.currentRound] || {};
+            let bothTablesComplete = true;
+            for (let i = 1; i <= state.boardsPerRound; i++) {
+              const boardNum = (state.currentRound - 1) * state.boardsPerRound + i;
+              if (!table1Scores[boardNum] || !table2Scores[boardNum]) {
+                bothTablesComplete = false;
+                break;
+              }
+            }
+            
+            // Transition to roundEnd and stop polling when both tables finish
+            if (bothTablesComplete) {
+              state.screen = 'roundEnd';
+              stopSync();
+            }
+          }
+          
           // Only update if data has actually changed
           if (JSON.stringify(data) !== JSON.stringify(state.gameData)) {
             state.gameData = data;
@@ -1076,7 +1096,22 @@
 
     function startSync() {
       if (syncInterval) clearInterval(syncInterval);
-      syncInterval = setInterval(loadGameData, 2000);
+      
+      // Determine polling interval based on current screen
+      let interval = null;
+      
+      if (state.screen === 'joinGame' && state.joinGameIdInput) {
+        // Poll every 3 seconds on joinGame screen (to keep table locks updated)
+        interval = 3000;
+      } else if (state.screen === 'roundWaiting') {
+        // Poll every 10 seconds while waiting for other table
+        interval = 10000;
+      }
+      
+      // Only start polling if we determined an interval
+      if (interval) {
+        syncInterval = setInterval(loadGameData, interval);
+      }
     }
 
     function stopSync() {
@@ -2244,6 +2279,16 @@
         // Add to browser history so back button works
         window.history.pushState({ screen: screen }, '', `#${screen}`);
       }
+      
+      // Manage polling based on new screen
+      if (screen === 'joinGame' && state.joinGameIdInput) {
+        startSync(); // Poll for table locks if game ID is entered
+      } else if (screen === 'roundWaiting') {
+        startSync(); // Poll while waiting for other table
+      } else {
+        stopSync(); // Stop polling on all other screens
+      }
+      
       render();
     }
 
@@ -2302,6 +2347,11 @@
       // Load game data to check table locks
       if (value.length >= 6) {
         loadGameDataForJoin();
+        // Start polling to keep table locks updated
+        startSync();
+      } else {
+        // Stop polling if game ID is cleared/incomplete
+        stopSync();
       }
     }
 
@@ -2439,8 +2489,8 @@
                     state.screen = 'roundEnd';
                   }
                   
-                  // Restart sync if we were in an active game
-                  if (state.screen !== 'start' && state.screen !== 'createGame' && state.screen !== 'gameCreated' && state.screen !== 'joinGame') {
+                  // Restart sync only on screens that need polling
+                  if (state.screen === 'joinGame' && state.joinGameIdInput || state.screen === 'roundWaiting') {
                     startSync();
                   }
                   
