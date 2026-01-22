@@ -1589,6 +1589,34 @@
       return true;
     }
 
+    function calculateVPs(impDifference) {
+      // Continuous VP scale (20 VPs total per match)
+      // Uses the standard WBF continuous VP formula
+      // VP = 10 + (15 × IMP) / √(IMP² + 400)
+      
+      if (impDifference === 0) {
+        return { team1VPs: 10, team2VPs: 10 }; // Tie
+      }
+      
+      const absIMPs = Math.abs(impDifference);
+      
+      // WBF continuous VP formula
+      const winnerVPs = 10 + (15 * absIMPs) / Math.sqrt(absIMPs * absIMPs + 400);
+      const loserVPs = 20 - winnerVPs;
+      
+      if (impDifference > 0) {
+        return { 
+          team1VPs: parseFloat(winnerVPs.toFixed(2)), 
+          team2VPs: parseFloat(loserVPs.toFixed(2)) 
+        };
+      } else {
+        return { 
+          team1VPs: parseFloat(loserVPs.toFixed(2)), 
+          team2VPs: parseFloat(winnerVPs.toFixed(2)) 
+        };
+      }
+    }
+
     function calculateIMPs(scoreDiff) {
       const impTable = [
         [20, 0], [50, 1], [90, 2], [130, 3], [170, 4],
@@ -1674,25 +1702,30 @@
       if (!state.gameData) return [];
 
       const playerIMPs = {};
+      const playerVPs = {};
       
-      // Initialize all players with 0 IMPs
+      // Initialize all players with 0 IMPs and 0 VPs
       for (let tableNum = 1; tableNum <= 2; tableNum++) {
         const players = state.gameData.tables[tableNum]?.players || {};
         Object.values(players).forEach(playerName => {
           if (playerName && !playerIMPs[playerName]) {
             playerIMPs[playerName] = 0;
+            playerVPs[playerName] = 0;
           }
         });
       }
 
-      // Process each round
+      // Process each round (for VPs, we need round totals)
       for (let round = 1; round <= state.currentRound; round++) {
         const table1Scores = state.gameData.tables[1]?.scores?.[round] || {};
-        const table2Scores = state.gameData.tables[2]?.scores?.[round] || {};
+        const table2Scores = state.gameData.tables[2]?.scores?.[round] || {}; 
         
         // Get player positions for this specific round
         const table1Positions = getPlayerPositionsForRound(1, round);
         const table2Positions = getPlayerPositionsForRound(2, round);
+        
+        // Calculate round total IMPs for VP conversion
+        let roundIMPsForTeam1 = 0;
         
         // Process each board in this round
         for (let i = 1; i <= state.boardsPerRound; i++) {
@@ -1703,6 +1736,8 @@
           if (t1Score && t2Score) {
             const scoreDiff = t1Score.score - t2Score.score;
             const imps = calculateIMPs(scoreDiff);
+            
+            roundIMPsForTeam1 += imps; // Accumulate for VP calculation
             
             if (imps !== 0) {
               // Get the actual players at each position during this round
@@ -1736,11 +1771,34 @@
             }
           }
         }
+        
+        // After processing all boards in the round, calculate VPs
+        const vpResult = calculateVPs(roundIMPsForTeam1);
+        
+        // Team 1 = NS at Table 1, EW at Table 2
+        const team1Players = [
+          table1Positions.north,
+          table1Positions.south,
+          table2Positions.east,
+          table2Positions.west
+        ];
+        
+        // Team 2 = EW at Table 1, NS at Table 2
+        const team2Players = [
+          table1Positions.east,
+          table1Positions.west,
+          table2Positions.north,
+          table2Positions.south
+        ];
+        
+        // Award VPs
+        team1Players.forEach(p => { if (p) playerVPs[p] = (playerVPs[p] || 0) + vpResult.team1VPs; });
+        team2Players.forEach(p => { if (p) playerVPs[p] = (playerVPs[p] || 0) + vpResult.team2VPs; });
       }
 
       return Object.entries(playerIMPs)
-        .map(([name, imps]) => ({ name, imps }))
-        .sort((a, b) => b.imps - a.imps);
+        .map(([name, imps]) => ({ name, imps, vps: playerVPs[name] || 0 }))
+        .sort((a, b) => b.imps - a.imps); // Sort by IMPs as requested
     }
     
     // Helper function to get player positions at a specific table for a specific round
@@ -2314,6 +2372,9 @@
                   <div class="imps-score ${player.imps >= 0 ? 'positive' : 'negative'}">
                     ${player.imps >= 0 ? '+' : ''}${player.imps} IMPs
                   </div>
+                  <div style="color: #b8b8d8; font-size: 0.95rem; font-weight: 600; min-width: 80px; text-align: right;">
+                    ${player.vps.toFixed(1)} VPs
+                  </div>
                 </div>
               `).join('')}
             </div>
@@ -2396,12 +2457,17 @@
           });
         }
         
+        // Calculate VPs for this round
+        const vpResult = calculateVPs(team1IMPs);
+        
         roundSummaries.push({
           round,
           table1Positions,
           table2Positions,
           team1IMPs,
           team2IMPs,
+          team1VPs: vpResult.team1VPs,
+          team2VPs: vpResult.team2VPs,
           boards
         });
       }
@@ -2434,6 +2500,9 @@
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team1IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team1IMPs >= 0 ? '+' : ''}${summary.team1IMPs} IMPs
                   </div>
+                  <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
+                    ${summary.team1VPs.toFixed(1)} VPs
+                  </div>
                 </div>
                 
                 <!-- Team 2 (EW at Table 1 + NS at Table 2) -->
@@ -2445,6 +2514,9 @@
                   </div>
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team2IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team2IMPs >= 0 ? '+' : ''}${summary.team2IMPs} IMPs
+                  </div>
+                  <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
+                    ${summary.team2VPs.toFixed(1)} VPs
                   </div>
                 </div>
               </div>
@@ -2571,12 +2643,17 @@
           });
         }
         
+        // Calculate VPs for this round
+        const vpResult = calculateVPs(team1IMPs);
+        
         roundSummaries.push({
           round,
           table1Positions,
           table2Positions,
           team1IMPs,
           team2IMPs,
+          team1VPs: vpResult.team1VPs,
+          team2VPs: vpResult.team2VPs,
           boards
         });
       }
@@ -2647,6 +2724,9 @@
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team1IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team1IMPs >= 0 ? '+' : ''}${summary.team1IMPs} IMPs
                   </div>
+                  <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
+                    ${summary.team1VPs.toFixed(1)} VPs
+                  </div>
                 </div>
                 
                 <!-- Team 2 -->
@@ -2658,6 +2738,9 @@
                   </div>
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team2IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team2IMPs >= 0 ? '+' : ''}${summary.team2IMPs} IMPs
+                  </div>
+                  <div style="font-size: 1.1rem; font-weight: 600; text-align: center; color: #b8b8d8; margin-top: 0.25rem;">
+                    ${summary.team2VPs.toFixed(1)} VPs
                   </div>
                 </div>
               </div>
