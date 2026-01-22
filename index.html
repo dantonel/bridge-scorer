@@ -1058,7 +1058,7 @@
             return;
           }
           
-          // Check if both tables completed (for roundWaiting → roundEnd transition)
+          // Check if both tables completed (for stopping poll on roundWaiting)
           if (state.screen === 'roundWaiting') {
             const table1Scores = data.tables?.[1]?.scores?.[state.currentRound] || {};
             const table2Scores = data.tables?.[2]?.scores?.[state.currentRound] || {};
@@ -1071,9 +1071,8 @@
               }
             }
             
-            // Transition to roundEnd and stop polling when both tables finish
+            // Stop polling when both tables finish (stay on roundWaiting, button will appear)
             if (bothTablesComplete) {
-              state.screen = 'roundEnd';
               stopSync();
             }
           }
