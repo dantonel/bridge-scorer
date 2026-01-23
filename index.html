@@ -1156,8 +1156,8 @@
     async function recordScore(e) {
       e.preventDefault();
       
-      if (!state.scoreForm.level || !state.scoreForm.strain || !state.scoreForm.declarer || state.scoreForm.tricksTaken === null) {
-        alert('Please fill in all fields');
+      if (!state.scoreForm.level || !state.scoreForm.strain || !state.scoreForm.declarer || state.scoreForm.result === null) {
+        // This shouldn't happen since button is disabled, but safety check
         return;
       }
 
@@ -1796,7 +1796,16 @@
       const contractTricks = level + 6;
       const tricksTaken = scoreData.result;
       const diff = tricksTaken - contractTricks;
-      const resultStr = diff >= 0 ? `+${diff}` : `${diff}`;
+      
+      // Format result: show nothing for making exactly, +X for overtricks, -X for undertricks
+      let resultStr;
+      if (diff === 0) {
+        resultStr = ''; // Making exactly - no suffix
+      } else if (diff > 0) {
+        resultStr = `+${diff}`; // Overtricks
+      } else {
+        resultStr = `${diff}`; // Undertricks (already has minus sign)
+      }
       
       // Build compact string with colored suit (four-color scheme)
       let compact;
@@ -2511,7 +2520,8 @@
                   `}
                 </div>
 
-                <button type="submit" class="submit-score-btn">
+                <button type="submit" class="submit-score-btn" 
+                        ${!state.scoreForm.strain || !state.scoreForm.declarer || state.scoreForm.result === null ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
                   Record Score
                 </button>
                 ${state.isManagementMode ? `
@@ -2876,11 +2886,11 @@
           <div class="action-buttons">
             ${state.isManagementMode ? `
               <button class="secondary-button" onclick="changeScreen('roundEnd')">
-                ← Back to Results
+                ← Back
               </button>
             ` : `
-              <button class="secondary-button" onclick="changeScreen('playing')">
-                ← Back to Playing
+              <button class="secondary-button" onclick="changeScreen('${state.screen === 'roundWaiting' ? 'roundWaiting' : 'playing'}')">
+                ← Back
               </button>
             `}
           </div>
