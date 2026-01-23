@@ -857,6 +857,7 @@
       joinGameIdInput: '',
       joinTableInput: '',
       managementGameIdInput: '',
+      managementAdminTokenInput: '',
       scoreForm: { 
         board: 1, 
         level: null,
@@ -911,36 +912,72 @@
       }
       
       try {
-        // Try to fetch the game
-        const response = await fetch(`${API_URL}/games/${state.managementGameIdInput}`);
+        // First, try to fetch with management flag to check lock
+        const checkResponse = await fetch(`${API_URL}/games/${state.managementGameIdInput}?management=true`, {
+          headers: {
+            'X-Management-Session-Id': state.sessionId
+          }
+        });
         
-        if (response.ok) {
-          const data = await response.json();
-          
-          // Set up state for management mode
-          state.gameId = state.managementGameIdInput;
-          state.gameData = data;
-          state.boardsPerRound = data.boardsPerRound;
-          state.showVPs = data.showVPs !== undefined ? data.showVPs : true;
-          state.impBonus = data.impBonus !== undefined ? data.impBonus : 0;
-          state.currentRound = data.currentRound;
-          state.isManagementMode = true;
-          state.adminToken = 'temp'; // Temporary - will be replaced when we fetch with admin auth
-          
-          // Save to localStorage
-          localStorage.setItem('bridgeScorerState', JSON.stringify({
-            gameId: state.gameId,
-            isManagementMode: true,
-            managementGameIdInput: state.managementGameIdInput
-          }));
-          
-          changeScreen('gameManagement');
-          showToast('Game management accessed');
-        } else if (response.status === 404) {
-          alert('Game not found. Please check the Game ID.');
-        } else {
-          alert('Error accessing game management');
+        if (checkResponse.status === 423) {
+          alert('Game management is currently in use by another session. Please try again later.');
+          return;
         }
+        
+        if (!checkResponse.ok) {
+          if (checkResponse.status === 404) {
+            alert('Game not found. Please check the Game ID.');
+          } else {
+            alert('Error accessing game management');
+          }
+          return;
+        }
+        
+        const data = await checkResponse.json();
+        
+        // Acquire the management lock
+        const lockResponse = await fetch(`${API_URL}/games/${state.managementGameIdInput}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-Id': state.sessionId
+          },
+          body: JSON.stringify({
+            managementSessionId: state.sessionId
+          })
+        });
+        
+        if (!lockResponse.ok) {
+          if (lockResponse.status === 423) {
+            alert('Game management was just locked by another session. Please try again.');
+          } else {
+            alert('Failed to acquire management lock');
+          }
+          return;
+        }
+        
+        const lockedData = await lockResponse.json();
+        
+        // Set up state for management mode
+        state.gameId = state.managementGameIdInput;
+        state.gameData = lockedData;
+        state.boardsPerRound = lockedData.boardsPerRound;
+        state.showVPs = lockedData.showVPs !== undefined ? lockedData.showVPs : true;
+        state.impBonus = lockedData.impBonus !== undefined ? lockedData.impBonus : 0;
+        state.currentRound = lockedData.currentRound;
+        state.isManagementMode = true;
+        state.adminToken = lockedData.adminToken; // Keep for admin API calls
+        
+        // Save to localStorage
+        localStorage.setItem('bridgeScorerState', JSON.stringify({
+          gameId: state.gameId,
+          adminToken: state.adminToken,
+          isManagementMode: true,
+          managementGameIdInput: state.managementGameIdInput
+        }));
+        
+        changeScreen('gameManagement');
+        showToast('Game management accessed');
       } catch (error) {
         console.error('Error accessing management:', error);
         alert('Failed to access game management');
@@ -2169,7 +2206,7 @@
         <div class="setup-container">
           <div class="header">
             <h1 class="app-title">Access Game Management</h1>
-            <p class="app-subtitle">Enter Game ID to manage an existing game</p>
+            <p class="app-subtitle">Enter Game ID to manage game</p>
           </div>
           <div class="divider"></div>
           <div class="form-group">
@@ -3328,10 +3365,11 @@
       if (confirm('Are you sure you want to logout? This will clear all local data including your admin access to this game.')) {
         stopSync();
         
-        // Check both current state AND localStorage for table locks to clear
+        // Check both current state AND localStorage for locks to clear
         let tableToUnlock = state.tableNumber;
         let gameIdToUnlock = state.gameId;
         let sessionIdToUnlock = state.sessionId;
+        let isManagementToUnlock = state.isManagementMode;
         
         // If not in current state, check localStorage
         if (!tableToUnlock || !gameIdToUnlock) {
@@ -3342,14 +3380,36 @@
               tableToUnlock = tableToUnlock || savedState.tableNumber;
               gameIdToUnlock = gameIdToUnlock || savedState.gameId;
               sessionIdToUnlock = sessionIdToUnlock || savedState.sessionId;
+              isManagementToUnlock = isManagementToUnlock || savedState.isManagementMode;
             }
           } catch (e) {
             console.error('Error reading saved state:', e);
           }
         }
         
+        // If we're in management mode, release the management lock
+        if (isManagementToUnlock && gameIdToUnlock && sessionIdToUnlock) {
+          try {
+            console.log('Releasing management lock:', { gameId: gameIdToUnlock });
+            
+            await fetch(`${API_URL}/games/${gameIdToUnlock}`, {
+              method: 'PATCH',
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Session-Id': sessionIdToUnlock
+              },
+              body: JSON.stringify({
+                managementSessionId: null  // Release the lock
+              })
+            });
+            
+            console.log('Management lock released successfully');
+          } catch (error) {
+            console.error('Error releasing management lock:', error);
+          }
+        }
         // If we have a table lock (from either current state or localStorage), clear it on the server
-        if (gameIdToUnlock && tableToUnlock && sessionIdToUnlock && !state.isManagementMode) {
+        else if (gameIdToUnlock && tableToUnlock && sessionIdToUnlock) {
           try {
             const headers = { 
               'Content-Type': 'application/json',

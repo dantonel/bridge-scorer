@@ -104,6 +104,8 @@ export default async function handler(req, res) {
         const game = JSON.parse(gameJson);
         const adminToken = req.headers['x-admin-token'] || url.searchParams.get('token');
         const tableNumber = req.headers['x-table-number'] || url.searchParams.get('table');
+        const requestManagement = url.searchParams.get('management') === 'true';
+        const managementSessionId = req.headers['x-management-session-id'];
         
         if (adminToken) {
           if (game.adminToken !== adminToken) {
@@ -112,6 +114,15 @@ export default async function handler(req, res) {
           }
           // Admin gets full game data
           sendJSON(res, 200, game);
+        } else if (requestManagement) {
+          // Trying to access management - check if it's locked
+          if (game.managementSessionId && game.managementSessionId !== managementSessionId) {
+            sendJSON(res, 423, { error: 'Game management is currently in use by another session' });
+            return;
+          }
+          // Management is available or already owned by this session
+          const { adminToken: _, ...gameWithoutToken } = game;
+          sendJSON(res, 200, gameWithoutToken);
         } else {
           // Non-admin: filter out current round scores from OTHER table
           const filteredGame = { ...game };
@@ -248,6 +259,31 @@ export default async function handler(req, res) {
               }
             }
           }
+        }
+      }
+      
+      // Check if acquiring/releasing management lock
+      if (updates.hasOwnProperty('managementSessionId')) {
+        const currentLock = existingGame.managementSessionId;
+        const requestedSessionId = updates.managementSessionId;
+        
+        // Releasing lock (null)
+        if (requestedSessionId === null) {
+          // Allow if: has admin token OR has matching managementSessionId
+          if (adminToken) {
+            if (existingGame.adminToken !== adminToken) {
+              sendJSON(res, 403, { error: 'Invalid admin token' });
+              return;
+            }
+          } else if (sessionId !== currentLock) {
+            sendJSON(res, 403, { error: 'Cannot release management lock - not your session' });
+            return;
+          }
+        } 
+        // Acquiring lock
+        else if (currentLock && currentLock !== requestedSessionId) {
+          sendJSON(res, 423, { error: 'Management is locked by another session' });
+          return;
         }
       }
       
