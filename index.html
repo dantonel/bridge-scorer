@@ -3773,8 +3773,11 @@
     function loadStateFromLocalStorage() {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
+        console.log('localStorage data:', saved);
+        
         if (saved) {
           const savedState = JSON.parse(saved);
+          console.log('Parsed saved state:', savedState);
           
           // Only restore game/session data
           state.gameId = savedState.gameId || '';
@@ -3795,26 +3798,35 @@
             tricksTaken: null
           };
           
+          console.log('Restored gameId:', state.gameId, 'tableNumber:', state.tableNumber);
+          
           // Determine screen from URL hash OR infer from saved state
           const urlHash = window.location.hash.substring(1);
+          console.log('URL hash:', urlHash);
           
           if (urlHash) {
             // URL hash exists - use it
             state.screen = urlHash;
+            console.log('Using URL hash for screen:', state.screen);
           } else if (state.gameId && state.tableNumber) {
             // No hash but we have an active game - default to playing screen
             // (we'll verify/correct this when we fetch game data)
             state.screen = 'playing';
             window.location.hash = 'playing';
+            console.log('Set screen to playing, hash updated');
           } else if (state.gameId && savedState.isManagementMode) {
             // No hash but we have management mode
             state.screen = 'gameManagement';
             window.location.hash = 'gameManagement';
+            console.log('Set screen to gameManagement, hash updated');
           } else {
             // No hash, no active game
             state.screen = 'start';
             window.location.hash = 'start';
+            console.log('No saved game, going to start');
           }
+          
+          console.log('About to check reconnection. GameId:', state.gameId, 'Screen:', state.screen);
           
           // If we were in an active game, reconnect
           if (state.gameId && (state.screen === 'playing' || state.screen === 'roundWaiting' || state.screen === 'roundEnd' || state.screen === 'tableSetup' || state.screen === 'gameSummary' || state.screen === 'gameManagement')) {
