@@ -3549,11 +3549,6 @@
       }
     }
 
-    // On page load, initialize from URL hash
-    const initialScreen = window.location.hash.substring(1) || 'start';
-    if (!window.location.hash) {
-      window.location.hash = 'start';
-    }
 
     function getBackButton(destination, text = '← Back') {
       return `
@@ -3992,6 +3987,16 @@
       } catch (e) {
         console.error('Failed to load state from localStorage:', e);
       }
+      
+      // If we get here, no saved state or no reconnection needed
+      // Make sure hash is set
+      if (!window.location.hash) {
+        window.location.hash = 'start';
+        state.screen = 'start';
+      } else {
+        state.screen = window.location.hash.substring(1) || 'start';
+      }
+      
       return false; // No reconnection needed
     }
     
