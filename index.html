@@ -961,6 +961,7 @@
         
         // Set up state for management mode
         state.gameId = state.managementGameIdInput;
+        saveLastGameId(state.gameId);
         state.gameData = lockedData;
         state.boardsPerRound = lockedData.boardsPerRound;
         state.showVPs = lockedData.showVPs !== undefined ? lockedData.showVPs : true;
@@ -1031,6 +1032,7 @@
         console.log('Game created successfully:', createdGame);
 
         state.gameId = gameId;
+        saveLastGameId(gameId);
         state.adminToken = adminToken;
         state.gameData = gameData;
         
@@ -1072,6 +1074,7 @@
           console.log('✓ Table is available, proceeding to lock');
           
           state.gameId = state.joinGameIdInput.toUpperCase();
+          saveLastGameId(state.gameId);
           state.tableNumber = parseInt(state.joinTableInput);
           state.gameData = data;
           state.boardsPerRound = data.boardsPerRound;
@@ -2214,8 +2217,9 @@
             <label class="form-label">Game ID</label>
             <input type="text" 
                    class="form-input large-input" 
-                   value="${state.managementGameIdInput || ''}"
+                   value="${state.managementGameIdInput || getLastGameId()}"
                    oninput="state.managementGameIdInput = this.value.toUpperCase()"
+                   onclick="this.select()"
                    placeholder="Enter 6-character Game ID"
                    maxlength="6"
                    style="text-transform: uppercase;">
@@ -2326,8 +2330,9 @@
               <label class="form-label">Game ID</label>
               <input type="text" class="form-input large-input" 
                      placeholder="Enter Game ID" 
-                     value="${state.joinGameIdInput}"
+                     value="${state.joinGameIdInput || getLastGameId()}"
                      oninput="onUserInput(); setJoinGameId(this.value)"
+                     onclick="this.select()"
                      style="text-transform: uppercase;">
             </div>
             <div class="form-group">
@@ -3363,11 +3368,14 @@
     }
 
     async function logoutAndClear() {
-      const confirmMessage = state.isManagementMode 
-        ? 'Are you sure you want to logout? This will clear all local data including your admin access to this game.'
-        : 'Are you sure you want to logout? This will clear your session and you will need to rejoin the game.';
+      let shouldLogout = true;
       
-      if (confirm(confirmMessage)) {
+      if (state.isManagementMode) {
+        // Only ask for confirmation in management mode
+        shouldLogout = confirm('Are you sure you want to logout? This will clear all local data including your admin access to this game.');
+      }
+      
+      if (shouldLogout) {
         stopSync();
         
         // Check both current state AND localStorage for locks to clear
@@ -3746,6 +3754,26 @@
 
     // LocalStorage persistence functions
     const STORAGE_KEY = 'bridge-scorer-state';
+    const LAST_GAME_ID_KEY = 'bridge-scorer-last-game-id';
+    
+    function saveLastGameId(gameId) {
+      if (gameId) {
+        try {
+          localStorage.setItem(LAST_GAME_ID_KEY, gameId);
+        } catch (e) {
+          console.error('Failed to save last game ID:', e);
+        }
+      }
+    }
+    
+    function getLastGameId() {
+      try {
+        return localStorage.getItem(LAST_GAME_ID_KEY) || '';
+      } catch (e) {
+        console.error('Failed to get last game ID:', e);
+        return '';
+      }
+    }
     
     function saveStateToLocalStorage() {
       try {
