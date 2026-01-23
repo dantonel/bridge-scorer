@@ -786,6 +786,51 @@
         font-size: 0.85rem;
       }
     }
+    
+    /* Toast notifications */
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+      max-width: 300px;
+    }
+    
+    .toast.success {
+      border-left: 4px solid #4caf50;
+    }
+    
+    .toast.error {
+      border-left: 4px solid #f44336;
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -811,6 +856,7 @@
       gameData: null,
       joinGameIdInput: '',
       joinTableInput: '',
+      managementGameIdInput: '',
       scoreForm: { 
         board: 1, 
         level: null,
@@ -844,6 +890,7 @@
 
     // Auto-sync interval
     let syncInterval = null;
+    let managementRefreshInterval = null;
     let isUserTyping = false;
     let typingTimeout = null;
 
@@ -857,6 +904,49 @@
     }
 
     // API Functions
+    async function accessGameManagement() {
+      if (!state.managementGameIdInput) {
+        alert('Please enter a Game ID');
+        return;
+      }
+      
+      try {
+        // Try to fetch the game
+        const response = await fetch(`${API_URL}/games/${state.managementGameIdInput}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Set up state for management mode
+          state.gameId = state.managementGameIdInput;
+          state.gameData = data;
+          state.boardsPerRound = data.boardsPerRound;
+          state.showVPs = data.showVPs !== undefined ? data.showVPs : true;
+          state.impBonus = data.impBonus !== undefined ? data.impBonus : 0;
+          state.currentRound = data.currentRound;
+          state.isManagementMode = true;
+          state.adminToken = 'temp'; // Temporary - will be replaced when we fetch with admin auth
+          
+          // Save to localStorage
+          localStorage.setItem('bridgeScorerState', JSON.stringify({
+            gameId: state.gameId,
+            isManagementMode: true,
+            managementGameIdInput: state.managementGameIdInput
+          }));
+          
+          changeScreen('gameManagement');
+          showToast('Game management accessed');
+        } else if (response.status === 404) {
+          alert('Game not found. Please check the Game ID.');
+        } else {
+          alert('Error accessing game management');
+        }
+      } catch (error) {
+        console.error('Error accessing management:', error);
+        alert('Failed to access game management');
+      }
+    }
+    
     async function createGame() {
       console.log('createGame called');
       const gameId = generateGameId();
@@ -1165,15 +1255,30 @@
     }
 
     async function loadGameData() {
-      if (!state.gameId) return;
+      // Handle different game ID sources based on screen
+      const gameIdToLoad = state.gameId || (state.screen === 'joinGame' ? state.joinGameIdInput : null);
+      
+      if (!gameIdToLoad) return;
       
       // Don't sync while user is actively typing
       if (isUserTyping) return;
       
       try {
-        const response = await fetch(`${API_URL}/games/${state.gameId}`);
+        const headers = {};
+        if (state.tableNumber) {
+          headers['X-Table-Number'] = state.tableNumber.toString();
+        }
+        
+        const response = await fetch(`${API_URL}/games/${gameIdToLoad}`, { headers });
         if (response.ok) {
           const data = await response.json();
+          
+          // For join screen, just update gameData to show table locks
+          if (state.screen === 'joinGame') {
+            state.gameData = data;
+            render();
+            return;
+          }
           
           // Check if this session has been kicked out (another device took over)
           if (state.tableNumber && data.tables[state.tableNumber].sessionId && 
@@ -1398,6 +1503,20 @@
         tricksTaken: null
       };
       changeScreen('playing');
+    }
+    
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+          document.body.removeChild(toast);
+        }, 300);
+      }, 3000);
     }
 
     function generateGameId() {
@@ -1714,6 +1833,18 @@
         description: `${level}${strainName}${doublingName}, ${declarerName} declarer, ${resultName}`
       };
     }
+    
+    function canViewFullSummary() {
+      // Can view full summary if:
+      // 1. We're in admin/management mode, OR
+      // 2. Current round is complete (both tables finished)
+      if (state.isManagementMode || !state.gameData) return true;
+      
+      const table1Complete = isRoundComplete(1, state.currentRound);
+      const table2Complete = isRoundComplete(2, state.currentRound);
+      
+      return table1Complete && table2Complete;
+    }
 
     function calculateLeaderboard() {
       if (!state.gameData) return [];
@@ -1964,6 +2095,9 @@
         case 'gameSummary':
           app.innerHTML = renderGameSummaryScreen();
           break;
+        case 'accessManagement':
+          app.innerHTML = renderAccessManagementScreen();
+          break;
         case 'gameManagement':
           app.innerHTML = renderGameManagementScreen();
           break;
@@ -1997,7 +2131,36 @@
             <button class="secondary-button" onclick="changeScreen('joinGame')">
               Join Existing Game
             </button>
+            <button class="secondary-button" onclick="changeScreen('accessManagement')" style="background: rgba(255, 215, 0, 0.1); border-color: rgba(255, 215, 0, 0.3); color: #ffd700;">
+              🎮 Game Management
+            </button>
           </div>
+        </div>
+      `;
+    }
+    
+    function renderAccessManagementScreen() {
+      return `
+        <div class="setup-container">
+          <div class="header">
+            <h1 class="app-title">Access Game Management</h1>
+            <p class="app-subtitle">Enter Game ID to manage an existing game</p>
+          </div>
+          <div class="divider"></div>
+          <div class="form-group">
+            <label class="form-label">Game ID</label>
+            <input type="text" 
+                   class="game-id-input" 
+                   value="${state.managementGameIdInput || ''}"
+                   oninput="state.managementGameIdInput = this.value.toUpperCase()"
+                   placeholder="Enter 6-character Game ID"
+                   maxlength="6"
+                   style="text-transform: uppercase;">
+          </div>
+          <button class="primary-button" onclick="accessGameManagement()">
+            Access Management
+          </button>
+          ${getBackButton('start')}
         </div>
       `;
     }
@@ -2101,8 +2264,8 @@
               <input type="text" class="form-input large-input" 
                      placeholder="Enter Game ID" 
                      value="${state.joinGameIdInput}"
-                     oninput="onUserInput()"
-                     onchange="setJoinGameId(this.value)">
+                     oninput="onUserInput(); setJoinGameId(this.value)"
+                     style="text-transform: uppercase;">
             </div>
             <div class="form-group">
               <label class="form-label">Table Number</label>
@@ -2352,6 +2515,12 @@
                 `).join('')}
               </div>
           </div>
+          
+          <div style="text-align: center; margin-top: 1.5rem;">
+            <button class="secondary-button" onclick="changeScreen('gameSummary')">
+              📊 View Summary
+            </button>
+          </div>
         </div>
       `;
     }
@@ -2414,6 +2583,12 @@
                 <p style="color: #ffd700; font-weight: 600; font-size: 1.1rem;">⏳ Waiting for other table to complete...</p>
               </div>
             `}
+            
+            <div style="text-align: center; margin-top: 1.5rem;">
+              <button class="secondary-button" onclick="changeScreen('gameSummary')">
+                📊 View Summary
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -2495,7 +2670,10 @@
       // Build round summaries
       const roundSummaries = [];
       
-      for (let round = 1; round <= state.currentRound; round++) {
+      // Determine max round to show based on permissions
+      const maxRound = canViewFullSummary() ? state.currentRound : state.currentRound - 1;
+      
+      for (let round = 1; round <= maxRound; round++) {
         const table1Scores = state.gameData.tables[1]?.scores?.[round] || {};
         const table2Scores = state.gameData.tables[2]?.scores?.[round] || {};
         
@@ -2557,6 +2735,13 @@
             <h1 class="results-title">📊 Full Game Summary</h1>
             <p class="game-id-small">Game: ${state.gameId}</p>
           </div>
+          
+          ${!canViewFullSummary() && state.currentRound > 0 ? `
+            <div style="background: rgba(255, 215, 0, 0.1); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; text-align: center;">
+              <p style="color: #ffd700; font-weight: 600;">ℹ️ Current round (Round ${state.currentRound}) is in progress</p>
+              <p style="color: #b8b8d8; font-size: 0.9rem; margin-top: 0.5rem;">Scores will be visible when both tables complete the round</p>
+            </div>
+          ` : ''}
 
           ${roundSummaries.length === 0 ? `
             <div class="leaderboard-card">
@@ -2742,17 +2927,29 @@
       
       return `
         <div class="game-container">
-          <div class="results-header">
-            <h1 class="results-title">🎮 Game Management</h1>
-            <p class="game-id-small">Game ID: <strong>${state.gameId}</strong> 
-              <button class="secondary-button" style="display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.85rem; margin-left: 0.5rem;" 
-                      onclick="navigator.clipboard.writeText('${state.gameId}'); alert('Game ID copied!')">
-                Copy ID
+          <!-- Floating refresh header -->
+          <div style="position: sticky; top: 0; z-index: 100; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
+                      padding: 0.75rem 1rem; border-bottom: 2px solid rgba(255, 215, 0, 0.3); margin: -1.5rem -1.5rem 1rem -1.5rem;
+                      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <button class="primary-button" onclick="refreshManagementView()" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                🔄 Refresh
               </button>
-            </p>
-            <p style="color: #b8b8d8; font-size: 0.9rem; margin-top: 0.5rem;">
-              Share this Game ID with players so they can join from their devices
-            </p>
+              <label style="display: flex; align-items: center; gap: 0.5rem; color: #b8b8d8; font-size: 0.9rem; cursor: pointer;">
+                <input type="checkbox" id="auto-refresh-checkbox" onchange="toggleAutoRefresh(this.checked)" 
+                       style="cursor: pointer; width: 18px; height: 18px;">
+                Auto-refresh (15s)
+              </label>
+            </div>
+            <div style="color: #ffd700; font-weight: 600; font-size: 0.9rem;">
+              Game ID: <span style="cursor: pointer; text-decoration: underline; user-select: all;" 
+                      onclick="navigator.clipboard.writeText('${state.gameId}'); showToast('Game ID copied!')"
+                      title="Click to copy">${state.gameId}</span>
+            </div>
+          </div>
+          
+          <div class="results-header" style="margin-top: 0.5rem;">
+            <h1 class="results-title" style="margin-bottom: 0.5rem;">🎮 Game Management</h1>
           </div>
 
           <!-- Logout buttons (side by side) -->
@@ -2764,30 +2961,23 @@
                 <button class="secondary-button" 
                         onclick="logoutTable(1)" 
                         ${!table1Locked ? 'disabled' : ''}
-                        style="background: ${table1Locked ? 'rgba(244, 67, 54, 0.2)' : 'rgba(128, 128, 128, 0.2)'}; 
+                        style="padding: 0.5rem 1rem; font-size: 0.85rem; background: ${table1Locked ? 'rgba(244, 67, 54, 0.2)' : 'rgba(128, 128, 128, 0.2)'}; 
                                border-color: ${table1Locked ? 'rgba(244, 67, 54, 0.5)' : 'rgba(128, 128, 128, 0.5)'}; 
                                color: ${table1Locked ? '#f44336' : '#888'}; 
                                ${!table1Locked ? 'cursor: not-allowed; opacity: 0.5;' : ''}">
-                  ${table1Locked ? '🚪 Logout Table 1' : '🔓 Table 1 Unlocked'}
+                  ${table1Locked ? '🚪 Logout T1' : '🔓 T1 Free'}
                 </button>
                 <button class="secondary-button" 
                         onclick="logoutTable(2)" 
                         ${!table2Locked ? 'disabled' : ''}
-                        style="background: ${table2Locked ? 'rgba(244, 67, 54, 0.2)' : 'rgba(128, 128, 128, 0.2)'}; 
+                        style="padding: 0.5rem 1rem; font-size: 0.85rem; background: ${table2Locked ? 'rgba(244, 67, 54, 0.2)' : 'rgba(128, 128, 128, 0.2)'}; 
                                border-color: ${table2Locked ? 'rgba(244, 67, 54, 0.5)' : 'rgba(128, 128, 128, 0.5)'}; 
                                color: ${table2Locked ? '#f44336' : '#888'}; 
                                ${!table2Locked ? 'cursor: not-allowed; opacity: 0.5;' : ''}">
-                  ${table2Locked ? '🚪 Logout Table 2' : '🔓 Table 2 Unlocked'}
+                  ${table2Locked ? '🚪 Logout T2' : '🔓 T2 Free'}
                 </button>
               `;
             })()}
-          </div>
-
-          <!-- Refresh button with larger gap above -->
-          <div class="action-buttons" style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
-            <button class="primary-button" onclick="refreshManagementView()">
-              🔄 Refresh Scores
-            </button>
           </div>
 
           ${roundSummaries.map(summary => `
@@ -2896,27 +3086,27 @@
                         </div>
                         
                         <!-- Actions -->
-                        <div style="text-align: center; min-width: 80px;">
+                        <div style="text-align: center; min-width: 100px; display: flex; gap: 0.25rem; justify-content: center;">
                           ${board.table1 ? `
                             <button class="edit-button" onclick="deleteScoreFromManagement(1, ${summary.round}, ${board.boardNum})" 
-                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.25rem; background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336;">
-                              Delete T1
+                                    style="font-size: 0.75rem; padding: 0.4rem 0.6rem; background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336; font-weight: 600;">
+                              ✕ T1
                             </button>
                           ` : `
                             <button class="edit-button" onclick="enterScore(1, ${summary.round}, ${board.boardNum})" 
-                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-right: 0.25rem;">
-                              Enter T1
+                                    style="font-size: 0.75rem; padding: 0.4rem 0.6rem; background: rgba(76, 175, 80, 0.2); border-color: rgba(76, 175, 80, 0.5); color: #4caf50; font-weight: 600;">
+                              + T1
                             </button>
                           `}
                           ${board.table2 ? `
                             <button class="edit-button" onclick="deleteScoreFromManagement(2, ${summary.round}, ${board.boardNum})" 
-                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336;">
-                              Delete T2
+                                    style="font-size: 0.75rem; padding: 0.4rem 0.6rem; background: rgba(244, 67, 54, 0.2); border-color: rgba(244, 67, 54, 0.5); color: #f44336; font-weight: 600;">
+                              ✕ T2
                             </button>
                           ` : `
                             <button class="edit-button" onclick="enterScore(2, ${summary.round}, ${board.boardNum})" 
-                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-                              Enter T2
+                                    style="font-size: 0.75rem; padding: 0.4rem 0.6rem; background: rgba(76, 175, 80, 0.2); border-color: rgba(76, 175, 80, 0.5); color: #4caf50; font-weight: 600;">
+                              + T2
                             </button>
                           `}
                         </div>
@@ -2972,6 +3162,23 @@
       }
     }
     
+    function toggleAutoRefresh(enabled) {
+      if (enabled) {
+        // Start auto-refresh every 15 seconds
+        managementRefreshInterval = setInterval(() => {
+          refreshManagementView();
+        }, 15000);
+        showToast('Auto-refresh enabled');
+      } else {
+        // Stop auto-refresh
+        if (managementRefreshInterval) {
+          clearInterval(managementRefreshInterval);
+          managementRefreshInterval = null;
+        }
+        showToast('Auto-refresh disabled');
+      }
+    }
+    
     async function logoutTable(tableNumber) {
       if (!confirm(`Logout whoever is connected to Table ${tableNumber}? This will clear their table lock and allow someone else to join.`)) {
         return;
@@ -3002,7 +3209,7 @@
         // Refresh the management view
         await refreshManagementView();
         
-        alert(`Table ${tableNumber} logged out successfully`);
+        showToast(`Table ${tableNumber} logged out`);
       } catch (error) {
         console.error('Error logging out table:', error);
         alert('Failed to logout table');
@@ -3070,7 +3277,7 @@
         // Refresh the management view
         await refreshManagementView();
         
-        alert(`Score deleted for Table ${tableNumber}, Board ${boardNumber}`);
+        showToast(`Score deleted for Board ${boardNumber}`);
       } catch (error) {
         console.error('Error deleting score:', error);
         alert('Failed to delete score');
@@ -3210,7 +3417,7 @@
       }
       
       // Manage polling based on new screen
-      if (screen === 'joinGame' && state.joinGameIdInput) {
+      if (screen === 'joinGame' && state.joinGameIdInput && state.joinGameIdInput.length >= 6) {
         startSync(); // Poll for table locks if game ID is entered
       } else if (screen === 'roundWaiting') {
         startSync(); // Poll while waiting for other table
@@ -3571,19 +3778,8 @@
                   
                   render();
                   
-                  // Show reconnection banner
-                  const banner = document.createElement('div');
-                  banner.innerHTML = showReconnectionBanner();
-                  document.body.appendChild(banner.firstElementChild);
-                  
-                  // Auto-hide after 3 seconds
-                  setTimeout(() => {
-                    const bannerEl = document.querySelector('.reconnection-banner');
-                    if (bannerEl) {
-                      bannerEl.style.animation = 'slideUp 0.3s ease';
-                      setTimeout(() => bannerEl.remove(), 300);
-                    }
-                  }, 3000);
+                  // Show reconnection toast
+                  showToast('✓ Reconnected to game');
                 } else {
                   // Game not found, go back to start and clear saved state
                   console.log('Game not found, resetting to start');
@@ -3654,27 +3850,6 @@
       } catch (e) {
         console.error('Failed to clear localStorage:', e);
       }
-    }
-    
-    function showReconnectionBanner() {
-      return `
-        <div class="reconnection-banner" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
-                    background: rgba(76, 175, 80, 0.95); color: white; padding: 1rem 2rem; 
-                    border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000;
-                    animation: slideDown 0.3s ease;">
-          <strong>✓ Reconnected to game</strong>
-        </div>
-        <style>
-          @keyframes slideDown {
-            from { top: -100px; opacity: 0; }
-            to { top: 20px; opacity: 1; }
-          }
-          @keyframes slideUp {
-            from { top: 20px; opacity: 1; }
-            to { top: -100px; opacity: 0; }
-          }
-        </style>
-      `;
     }
 
     // Initialize

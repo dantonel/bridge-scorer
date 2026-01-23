@@ -103,16 +103,34 @@ export default async function handler(req, res) {
       if (gameJson) {
         const game = JSON.parse(gameJson);
         const adminToken = req.headers['x-admin-token'] || url.searchParams.get('token');
+        const tableNumber = req.headers['x-table-number'] || url.searchParams.get('table');
         
         if (adminToken) {
           if (game.adminToken !== adminToken) {
             sendJSON(res, 403, { error: 'Invalid admin token' });
             return;
           }
+          // Admin gets full game data
           sendJSON(res, 200, game);
         } else {
-          const { adminToken: _, ...gameWithoutToken } = game;
-          sendJSON(res, 200, gameWithoutToken);
+          // Non-admin: filter out current round scores from OTHER table
+          const filteredGame = { ...game };
+          delete filteredGame.adminToken;
+          
+          // If tableNumber is provided, hide current round scores from the OTHER table
+          if (tableNumber && game.tables) {
+            const otherTable = tableNumber === '1' ? '2' : '1';
+            const currentRound = game.currentRound;
+            
+            if (filteredGame.tables[otherTable]?.scores?.[currentRound]) {
+              // Clone the game to avoid modifying the original
+              filteredGame.tables = JSON.parse(JSON.stringify(game.tables));
+              // Remove current round scores from the other table
+              delete filteredGame.tables[otherTable].scores[currentRound];
+            }
+          }
+          
+          sendJSON(res, 200, filteredGame);
         }
       } else {
         sendJSON(res, 404, { error: 'Game not found' });
