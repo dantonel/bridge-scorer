@@ -2148,51 +2148,58 @@
           app.innerHTML = renderJoinGameScreen();
           break;
         case 'tableSetup':
-          // Redirect to start if no game data
-          if (!state.gameData || !state.gameId) {
+          if (!state.gameId && !state.gameData) {
             window.location.hash = 'start';
             state.screen = 'start';
             app.innerHTML = renderStartScreen();
+          } else if (!state.gameData) {
+            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
           } else {
             app.innerHTML = renderTableSetupScreen();
           }
           break;
         case 'playing':
-          // Redirect to start if no game data
-          if (!state.gameData || !state.gameId) {
+          // Only redirect to start if we truly have no game (not just reconnecting)
+          if (!state.gameId && !state.gameData) {
             window.location.hash = 'start';
             state.screen = 'start';
             app.innerHTML = renderStartScreen();
+          } else if (!state.gameData) {
+            // Have gameId but no data yet (reconnecting) - show loading
+            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
           } else {
             app.innerHTML = renderPlayingScreen();
           }
           break;
         case 'roundWaiting':
-          // Redirect to start if no game data
-          if (!state.gameData || !state.gameId) {
+          if (!state.gameId && !state.gameData) {
             window.location.hash = 'start';
             state.screen = 'start';
             app.innerHTML = renderStartScreen();
+          } else if (!state.gameData) {
+            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
           } else {
             app.innerHTML = renderRoundWaitingScreen();
           }
           break;
         case 'roundEnd':
-          // Redirect to start if no game data
-          if (!state.gameData || !state.gameId) {
+          if (!state.gameId && !state.gameData) {
             window.location.hash = 'start';
             state.screen = 'start';
             app.innerHTML = renderStartScreen();
+          } else if (!state.gameData) {
+            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
           } else {
             app.innerHTML = renderRoundEndScreen();
           }
           break;
         case 'gameSummary':
-          // Redirect to start if no game data
-          if (!state.gameData || !state.gameId) {
+          if (!state.gameId && !state.gameData) {
             window.location.hash = 'start';
             state.screen = 'start';
             app.innerHTML = renderStartScreen();
+          } else if (!state.gameData) {
+            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
           } else {
             app.innerHTML = renderGameSummaryScreen();
           }
@@ -2201,12 +2208,17 @@
           app.innerHTML = renderAccessManagementScreen();
           break;
         case 'gameManagement':
-          // Redirect to start if no game data
-          if (!state.gameData || !state.gameId) {
+          // Only redirect to start if we truly have no game (not just reconnecting)
+          if (!state.gameId && !state.gameData) {
+            // No game at all - redirect
             window.location.hash = 'start';
             state.screen = 'start';
             app.innerHTML = renderStartScreen();
+          } else if (!state.gameData) {
+            // Have gameId but no data yet (reconnecting) - show loading
+            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Loading...</h1></div></div>';
           } else {
+            // Have game data - show management
             app.innerHTML = renderGameManagementScreen();
           }
           break;
@@ -3896,6 +3908,7 @@
           state.tableNumber = savedState.tableNumber || null;
           state.sessionId = savedState.sessionId || state.sessionId; // Restore to maintain table lock
           state.adminToken = savedState.adminToken || null;  // Restore admin token
+          state.isManagementMode = savedState.isManagementMode || false; // Restore management mode flag
           state.boardsPerRound = savedState.boardsPerRound || 4;
           state.currentRound = savedState.currentRound || 1;
           state.tablePlayers = savedState.tablePlayers || { north: '', south: '', east: '', west: '' };
