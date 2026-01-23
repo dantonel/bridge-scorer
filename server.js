@@ -304,6 +304,31 @@ export default async function handler(req, res) {
       
       // All checks passed, perform the update
       const updatedGame = deepMerge(existingGame, updates);
+      
+      // Check if we should auto-advance the round (after scores are updated)
+      const currentRound = updatedGame.currentRound;
+      const boardsPerRound = updatedGame.boardsPerRound || 4;
+      
+      if (currentRound <= 7) { // Only auto-advance up to round 7
+        const table1Scores = updatedGame.tables?.[1]?.scores?.[currentRound] || {};
+        const table2Scores = updatedGame.tables?.[2]?.scores?.[currentRound] || {};
+        
+        let allScoresComplete = true;
+        for (let i = 1; i <= boardsPerRound; i++) {
+          const boardNum = (currentRound - 1) * boardsPerRound + i;
+          if (!table1Scores[boardNum] || !table2Scores[boardNum]) {
+            allScoresComplete = false;
+            break;
+          }
+        }
+        
+        // If all scores are in, automatically advance to next round
+        if (allScoresComplete && currentRound < 7) {
+          console.log(`[PATCH] All scores complete for round ${currentRound}, advancing to round ${currentRound + 1}`);
+          updatedGame.currentRound = currentRound + 1;
+        }
+      }
+      
       await client.set(`game:${gameId}`, JSON.stringify(updatedGame), {
         EX: 86400
       });
