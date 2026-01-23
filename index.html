@@ -2148,25 +2148,67 @@
           app.innerHTML = renderJoinGameScreen();
           break;
         case 'tableSetup':
-          app.innerHTML = renderTableSetupScreen();
+          // Redirect to start if no game data
+          if (!state.gameData || !state.gameId) {
+            window.location.hash = 'start';
+            state.screen = 'start';
+            app.innerHTML = renderStartScreen();
+          } else {
+            app.innerHTML = renderTableSetupScreen();
+          }
           break;
         case 'playing':
-          app.innerHTML = renderPlayingScreen();
+          // Redirect to start if no game data
+          if (!state.gameData || !state.gameId) {
+            window.location.hash = 'start';
+            state.screen = 'start';
+            app.innerHTML = renderStartScreen();
+          } else {
+            app.innerHTML = renderPlayingScreen();
+          }
           break;
         case 'roundWaiting':
-          app.innerHTML = renderRoundWaitingScreen();
+          // Redirect to start if no game data
+          if (!state.gameData || !state.gameId) {
+            window.location.hash = 'start';
+            state.screen = 'start';
+            app.innerHTML = renderStartScreen();
+          } else {
+            app.innerHTML = renderRoundWaitingScreen();
+          }
           break;
         case 'roundEnd':
-          app.innerHTML = renderRoundEndScreen();
+          // Redirect to start if no game data
+          if (!state.gameData || !state.gameId) {
+            window.location.hash = 'start';
+            state.screen = 'start';
+            app.innerHTML = renderStartScreen();
+          } else {
+            app.innerHTML = renderRoundEndScreen();
+          }
           break;
         case 'gameSummary':
-          app.innerHTML = renderGameSummaryScreen();
+          // Redirect to start if no game data
+          if (!state.gameData || !state.gameId) {
+            window.location.hash = 'start';
+            state.screen = 'start';
+            app.innerHTML = renderStartScreen();
+          } else {
+            app.innerHTML = renderGameSummaryScreen();
+          }
           break;
         case 'accessManagement':
           app.innerHTML = renderAccessManagementScreen();
           break;
         case 'gameManagement':
-          app.innerHTML = renderGameManagementScreen();
+          // Redirect to start if no game data
+          if (!state.gameData || !state.gameId) {
+            window.location.hash = 'start';
+            state.screen = 'start';
+            app.innerHTML = renderStartScreen();
+          } else {
+            app.innerHTML = renderGameManagementScreen();
+          }
           break;
       }
       
@@ -3523,6 +3565,8 @@
           }
         };
         
+        // Update URL to start
+        window.location.hash = 'start';
         render();
       }
     }
