@@ -968,7 +968,8 @@
         state.impBonus = lockedData.impBonus !== undefined ? lockedData.impBonus : 0;
         state.currentRound = lockedData.currentRound;
         state.isManagementMode = true;
-        state.adminToken = lockedData.adminToken; // Keep for admin API calls
+        // Note: adminToken will be undefined for non-creators (session-based access)
+        // Only game creator gets admin token from createGame()
         
         // Save to localStorage
         localStorage.setItem('bridgeScorerState', JSON.stringify({
@@ -3224,19 +3225,35 @@
       console.log('gameId:', state.gameId);
       console.log('adminToken:', state.adminToken);
       
-      if (!state.gameId || !state.adminToken) {
-        console.warn('Missing gameId or adminToken, cannot refresh');
+      if (!state.gameId) {
+        console.warn('Missing gameId, cannot refresh');
         return;
       }
       
       try {
         console.log('Fetching game data...');
-        const response = await fetch(`${API_URL}/games/${state.gameId}`, {
-          headers: {
-            'X-Admin-Token': state.adminToken
-          }
-        });
+        
+        const headers = {};
+        if (state.adminToken) {
+          // Creator with admin token
+          headers['X-Admin-Token'] = state.adminToken;
+        } else {
+          // Management session only
+          headers['X-Management-Session-Id'] = state.sessionId;
+        }
+        
+        const url = state.adminToken 
+          ? `${API_URL}/games/${state.gameId}`
+          : `${API_URL}/games/${state.gameId}?management=true`;
+        
+        const response = await fetch(url, { headers });
         console.log('Response status:', response.status);
+        
+        if (response.status === 423) {
+          alert('Game management session expired. Another user has taken control.');
+          logoutAndClear();
+          return;
+        }
         
         if (response.ok) {
           const data = await response.json();
@@ -3278,9 +3295,14 @@
       try {
         // Clear the table lock by setting sessionId to null
         const headers = {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': state.adminToken
+          'Content-Type': 'application/json'
         };
+        
+        if (state.adminToken) {
+          headers['X-Admin-Token'] = state.adminToken;
+        } else {
+          headers['X-Session-Id'] = state.sessionId;
+        }
         
         const clearLockUpdate = {
           tables: {
@@ -3341,11 +3363,16 @@
       }
       
       try {
-        // Delete the score using admin token
+        // Delete the score using admin token or management session
         const headers = {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': state.adminToken
+          'Content-Type': 'application/json'
         };
+        
+        if (state.adminToken) {
+          headers['X-Admin-Token'] = state.adminToken;
+        } else {
+          headers['X-Session-Id'] = state.sessionId;
+        }
         
         const deleteUpdate = {
           tables: {

@@ -127,6 +127,7 @@ export default async function handler(req, res) {
             return;
           }
           // Management is available or already owned by this session
+          // Don't expose admin token - management access is session-based only
           const { adminToken: _, ...gameWithoutToken } = game;
           sendJSON(res, 200, gameWithoutToken);
         } else {
@@ -236,19 +237,13 @@ export default async function handler(req, res) {
           
           // Check if trying to clear sessionId (logout)
           if (tableUpdate.hasOwnProperty('sessionId') && tableUpdate.sessionId === null) {
-            // Allow if: has admin token OR has matching sessionId in header
-            if (adminToken) {
-              if (existingGame.adminToken !== adminToken) {
-                sendJSON(res, 403, { error: 'Invalid admin token' });
-                return;
-              }
-            } else if (sessionId) {
-              if (existingTable?.sessionId !== sessionId) {
-                sendJSON(res, 403, { error: 'Invalid session - cannot unlock this table' });
-                return;
-              }
-            } else {
-              sendJSON(res, 403, { error: 'Authorization required to unlock table' });
+            // Allow if: has admin token OR has matching sessionId in header OR has management session
+            const hasAdminToken = adminToken && existingGame.adminToken === adminToken;
+            const hasTableSession = sessionId && existingTable?.sessionId === sessionId;
+            const hasManagementSession = existingGame.managementSessionId && existingGame.managementSessionId === sessionId;
+            
+            if (!hasAdminToken && !hasTableSession && !hasManagementSession) {
+              sendJSON(res, 403, { error: 'Invalid session - cannot unlock this table' });
               return;
             }
           }
@@ -257,9 +252,12 @@ export default async function handler(req, res) {
           if (tableUpdate.scores) {
             const existingTableSession = existingTable?.sessionId;
             
-            // Allow if: admin token OR matching sessionId in update body
+            // Allow if: admin token OR matching sessionId in update body OR management session
             if (existingTableSession && existingTableSession !== tableUpdate.sessionId) {
-              if (!adminToken || existingGame.adminToken !== adminToken) {
+              const hasAdminToken = adminToken && existingGame.adminToken === adminToken;
+              const hasManagementSession = existingGame.managementSessionId && existingGame.managementSessionId === sessionId;
+              
+              if (!hasAdminToken && !hasManagementSession) {
                 sendJSON(res, 403, { error: 'Not authorized to update this table' });
                 return;
               }
