@@ -2206,6 +2206,11 @@
     }
     
     function renderAccessManagementScreen() {
+      // Pre-populate with last game ID if field is empty
+      if (!state.managementGameIdInput) {
+        state.managementGameIdInput = getLastGameId();
+      }
+      
       return `
         <div class="setup-container">
           <div class="header">
@@ -2217,7 +2222,7 @@
             <label class="form-label">Game ID</label>
             <input type="text" 
                    class="form-input large-input" 
-                   value="${state.managementGameIdInput || getLastGameId()}"
+                   value="${state.managementGameIdInput}"
                    oninput="state.managementGameIdInput = this.value.toUpperCase()"
                    onclick="this.select()"
                    placeholder="Enter 6-character Game ID"
@@ -2316,6 +2321,15 @@
     }
 
     function renderJoinGameScreen() {
+      // Pre-populate with last game ID if field is empty
+      if (!state.joinGameIdInput) {
+        state.joinGameIdInput = getLastGameId();
+        // Trigger loading game data if we have a game ID
+        if (state.joinGameIdInput && state.joinGameIdInput.length >= 6) {
+          loadGameDataForJoin();
+        }
+      }
+      
       const isTable1Locked = state.gameData?.tables?.[1]?.sessionId && state.gameData.tables[1].sessionId !== state.sessionId;
       const isTable2Locked = state.gameData?.tables?.[2]?.sessionId && state.gameData.tables[2].sessionId !== state.sessionId;
       
@@ -2330,7 +2344,7 @@
               <label class="form-label">Game ID</label>
               <input type="text" class="form-input large-input" 
                      placeholder="Enter Game ID" 
-                     value="${state.joinGameIdInput || getLastGameId()}"
+                     value="${state.joinGameIdInput}"
                      oninput="onUserInput(); setJoinGameId(this.value)"
                      onclick="this.select()"
                      style="text-transform: uppercase;">
