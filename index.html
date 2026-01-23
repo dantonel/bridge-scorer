@@ -1834,6 +1834,22 @@
       };
     }
     
+    function isRoundComplete(tableNumber, round) {
+      if (!state.gameData || !state.gameData.tables[tableNumber]) return false;
+      
+      const scores = state.gameData.tables[tableNumber].scores?.[round] || {};
+      
+      // Check if all boards for this round have been played
+      for (let i = 1; i <= state.boardsPerRound; i++) {
+        const boardNum = (round - 1) * state.boardsPerRound + i;
+        if (!scores[boardNum]) {
+          return false; // Missing a score
+        }
+      }
+      
+      return true; // All boards scored
+    }
+    
     function canViewFullSummary() {
       // Can view full summary if:
       // 1. We're in admin/management mode, OR
@@ -2858,9 +2874,15 @@
           `).join('')}
 
           <div class="action-buttons">
-            <button class="secondary-button" onclick="changeScreen('roundEnd')">
-              ← Back to Results
-            </button>
+            ${state.isManagementMode ? `
+              <button class="secondary-button" onclick="changeScreen('roundEnd')">
+                ← Back to Results
+              </button>
+            ` : `
+              <button class="secondary-button" onclick="changeScreen('playing')">
+                ← Back to Playing
+              </button>
+            `}
           </div>
         </div>
       `;
