@@ -117,7 +117,8 @@ export default async function handler(req, res) {
           const filteredGame = { ...game };
           delete filteredGame.adminToken;
           
-          // If tableNumber is provided, hide current round scores from the OTHER table
+          // If tableNumber is provided, hide current round score VALUES from the OTHER table
+          // but keep the fact that scores EXIST for round completion detection
           if (tableNumber && game.tables) {
             const otherTable = tableNumber === '1' ? '2' : '1';
             const currentRound = game.currentRound;
@@ -125,8 +126,16 @@ export default async function handler(req, res) {
             if (filteredGame.tables[otherTable]?.scores?.[currentRound]) {
               // Clone the game to avoid modifying the original
               filteredGame.tables = JSON.parse(JSON.stringify(game.tables));
-              // Remove current round scores from the other table
-              delete filteredGame.tables[otherTable].scores[currentRound];
+              
+              // Replace score values with placeholder to hide details but preserve existence
+              const otherTableScores = filteredGame.tables[otherTable].scores[currentRound];
+              for (const boardNum in otherTableScores) {
+                // Keep minimal info - just that the score exists
+                filteredGame.tables[otherTable].scores[currentRound][boardNum] = {
+                  hidden: true,
+                  board: otherTableScores[boardNum].board
+                };
+              }
             }
           }
           
@@ -260,6 +269,30 @@ export default async function handler(req, res) {
       if (!gameData) {
         sendJSON(res, 400, { error: 'Invalid request body' });
         return;
+      }
+      
+      // Check if all boards for current round are complete on both tables
+      const currentRound = gameData.currentRound;
+      const boardsPerRound = gameData.boardsPerRound || 4;
+      
+      if (currentRound <= 7) { // Only auto-advance up to round 7
+        const table1Scores = gameData.tables?.[1]?.scores?.[currentRound] || {};
+        const table2Scores = gameData.tables?.[2]?.scores?.[currentRound] || {};
+        
+        let allScoresComplete = true;
+        for (let i = 1; i <= boardsPerRound; i++) {
+          const boardNum = (currentRound - 1) * boardsPerRound + i;
+          if (!table1Scores[boardNum] || !table2Scores[boardNum]) {
+            allScoresComplete = false;
+            break;
+          }
+        }
+        
+        // If all scores are in, automatically advance to next round
+        if (allScoresComplete && currentRound < 7) {
+          console.log(`All scores complete for round ${currentRound}, advancing to round ${currentRound + 1}`);
+          gameData.currentRound = currentRound + 1;
+        }
       }
       
       await client.set(`game:${gameId}`, JSON.stringify(gameData), {
