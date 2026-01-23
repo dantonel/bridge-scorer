@@ -3363,7 +3363,11 @@
     }
 
     async function logoutAndClear() {
-      if (confirm('Are you sure you want to logout? This will clear all local data including your admin access to this game.')) {
+      const confirmMessage = state.isManagementMode 
+        ? 'Are you sure you want to logout? This will clear all local data including your admin access to this game.'
+        : 'Are you sure you want to logout? This will clear your session and you will need to rejoin the game.';
+      
+      if (confirm(confirmMessage)) {
         stopSync();
         
         // Check both current state AND localStorage for locks to clear
