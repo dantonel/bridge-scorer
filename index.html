@@ -2716,7 +2716,7 @@
           <div class="action-buttons">
             ${!isGameComplete ? `
               <button class="primary-button" onclick="changeScreen('playing')">
-                Continue to Round ${state.currentRound + 1}
+                Continue to Round ${state.gameData?.currentRound || state.currentRound + 1}
               </button>
             ` : `
               <button class="primary-button" onclick="startNewGame()">
