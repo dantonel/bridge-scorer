@@ -3007,9 +3007,9 @@
               <button class="primary-button" onclick="refreshManagementView()" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
                 🔄 Refresh
               </button>
-              <label style="display: flex; align-items: center; gap: 0.5rem; color: #b8b8d8; font-size: 0.9rem; cursor: pointer;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; color: #b8b8d8; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
                 <input type="checkbox" id="auto-refresh-checkbox" onchange="toggleAutoRefresh(this.checked)" 
-                       style="cursor: pointer; width: 18px; height: 18px;">
+                       style="cursor: pointer; width: 18px; height: 18px; flex-shrink: 0;">
                 Auto-refresh (15s)
               </label>
             </div>
@@ -3020,8 +3020,8 @@
             </div>
           </div>
           
-          <div class="results-header" style="margin-top: 0.5rem;">
-            <h1 class="results-title" style="margin-bottom: 0.5rem;">🎮 Game Management</h1>
+          <div class="results-header" style="margin-top: 0.25rem; margin-bottom: 0.25rem;">
+            <h1 class="results-title" style="margin-bottom: 0; margin-top: 0;">🎮 Game Management</h1>
           </div>
 
           <!-- Logout buttons (side by side) -->
