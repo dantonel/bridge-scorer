@@ -4014,11 +4014,10 @@
     try {
       const isReconnecting = loadStateFromLocalStorage();
       console.log('Reconnecting:', isReconnecting);
-      if (!isReconnecting) {
-        console.log('Calling initial render...');
-        render();
-        console.log('Initial render complete');
-      }
+      // Always render initially - reconnection will update async
+      console.log('Calling initial render...');
+      render();
+      console.log('Initial render complete');
     } catch (error) {
       console.error('Initialization error:', error);
       // Fallback render
