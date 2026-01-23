@@ -116,6 +116,12 @@ export default async function handler(req, res) {
           sendJSON(res, 200, game);
         } else if (requestManagement) {
           // Trying to access management - check if it's locked
+          console.log('Management access check:', {
+            currentLock: game.managementSessionId,
+            requestingSession: managementSessionId,
+            isLocked: !!(game.managementSessionId && game.managementSessionId !== managementSessionId)
+          });
+          
           if (game.managementSessionId && game.managementSessionId !== managementSessionId) {
             sendJSON(res, 423, { error: 'Game management is currently in use by another session' });
             return;
@@ -267,6 +273,12 @@ export default async function handler(req, res) {
         const currentLock = existingGame.managementSessionId;
         const requestedSessionId = updates.managementSessionId;
         
+        console.log('Management lock update:', {
+          currentLock,
+          requestedSessionId,
+          sessionIdHeader: sessionId
+        });
+        
         // Releasing lock (null)
         if (requestedSessionId === null) {
           // Allow if: has admin token OR has matching managementSessionId
@@ -282,9 +294,12 @@ export default async function handler(req, res) {
         } 
         // Acquiring lock
         else if (currentLock && currentLock !== requestedSessionId) {
+          console.log('Lock denied - already locked by different session');
           sendJSON(res, 423, { error: 'Management is locked by another session' });
           return;
         }
+        
+        console.log('Lock operation allowed');
       }
       
       // All checks passed, perform the update
