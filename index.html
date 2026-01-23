@@ -2884,15 +2884,9 @@
           `).join('')}
 
           <div class="action-buttons">
-            ${state.isManagementMode ? `
-              <button class="secondary-button" onclick="changeScreen('roundEnd')">
-                ← Back
-              </button>
-            ` : `
-              <button class="secondary-button" onclick="changeScreen('${state.screen === 'roundWaiting' ? 'roundWaiting' : 'playing'}')">
-                ← Back
-              </button>
-            `}
+            <button class="secondary-button" onclick="history.back()">
+              ← Back
+            </button>
           </div>
         </div>
       `;
