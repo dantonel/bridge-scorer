@@ -3505,41 +3505,55 @@
     }
     
     function changeScreen(screen, addToHistory = true) {
-      state.screen = screen;
-      if (addToHistory) {
-        // Add to browser history so back button works
-        window.history.pushState({ screen: screen }, '', `#${screen}`);
-      }
-      
       // When navigating to playing screen, sync currentRound from gameData
       // (backend may have auto-advanced it)
       if (screen === 'playing' && state.gameData) {
         state.currentRound = state.gameData.currentRound;
       }
       
-      // Manage polling based on new screen
-      if (screen === 'joinGame' && state.joinGameIdInput && state.joinGameIdInput.length >= 6) {
+      // Update URL hash - this will trigger hashchange event
+      if (addToHistory) {
+        window.location.hash = screen;
+      } else {
+        // Replace without adding to history
+        window.history.replaceState(null, '', `#${screen}`);
+        // Still need to update state and render since hashchange won't fire
+        state.screen = screen;
+        updatePolling();
+        render();
+      }
+    }
+    
+    // Listen to hash changes (including back/forward button)
+    window.addEventListener('hashchange', () => {
+      const screen = window.location.hash.substring(1) || 'start';
+      state.screen = screen;
+      
+      // Sync currentRound when navigating to playing
+      if (screen === 'playing' && state.gameData) {
+        state.currentRound = state.gameData.currentRound;
+      }
+      
+      updatePolling();
+      render();
+    });
+    
+    // Helper to manage polling based on current screen
+    function updatePolling() {
+      if (state.screen === 'joinGame' && state.joinGameIdInput && state.joinGameIdInput.length >= 6) {
         startSync(); // Poll for table locks if game ID is entered
-      } else if (screen === 'roundWaiting' || screen === 'roundEnd') {
+      } else if (state.screen === 'roundWaiting' || state.screen === 'roundEnd') {
         startSync(); // Poll while waiting for round advancement
       } else {
         stopSync(); // Stop polling on all other screens
       }
-      
-      render();
     }
 
-    // Handle browser back/forward buttons
-    window.addEventListener('popstate', (event) => {
-      if (event.state && event.state.screen) {
-        changeScreen(event.state.screen, false);
-      } else {
-        changeScreen('start', false);
-      }
-    });
-
-    // Set initial history state
-    window.history.replaceState({ screen: 'start' }, '', '#start');
+    // On page load, initialize from URL hash
+    const initialScreen = window.location.hash.substring(1) || 'start';
+    if (!window.location.hash) {
+      window.location.hash = 'start';
+    }
 
     function getBackButton(destination, text = '← Back') {
       return `
@@ -3762,8 +3776,7 @@
         if (saved) {
           const savedState = JSON.parse(saved);
           
-          // Restore state
-          state.screen = savedState.screen || 'start';
+          // Only restore game/session data
           state.gameId = savedState.gameId || '';
           state.tableNumber = savedState.tableNumber || null;
           state.sessionId = savedState.sessionId || state.sessionId; // Restore to maintain table lock
@@ -3781,6 +3794,27 @@
             declarer: '', 
             tricksTaken: null
           };
+          
+          // Determine screen from URL hash OR infer from saved state
+          const urlHash = window.location.hash.substring(1);
+          
+          if (urlHash) {
+            // URL hash exists - use it
+            state.screen = urlHash;
+          } else if (state.gameId && state.tableNumber) {
+            // No hash but we have an active game - default to playing screen
+            // (we'll verify/correct this when we fetch game data)
+            state.screen = 'playing';
+            window.location.hash = 'playing';
+          } else if (state.gameId && savedState.isManagementMode) {
+            // No hash but we have management mode
+            state.screen = 'gameManagement';
+            window.location.hash = 'gameManagement';
+          } else {
+            // No hash, no active game
+            state.screen = 'start';
+            window.location.hash = 'start';
+          }
           
           // If we were in an active game, reconnect
           if (state.gameId && (state.screen === 'playing' || state.screen === 'roundWaiting' || state.screen === 'roundEnd' || state.screen === 'tableSetup' || state.screen === 'gameSummary' || state.screen === 'gameManagement')) {
@@ -3830,10 +3864,12 @@
                         // Both tables complete - go to roundEnd
                         console.log('Both tables complete on reconnection, going to roundEnd');
                         state.screen = 'roundEnd';
+                        window.location.hash = 'roundEnd';
                       } else {
                         // Only our table complete - go to roundWaiting
                         console.log('Our table complete on reconnection, going to roundWaiting');
                         state.screen = 'roundWaiting';
+                        window.location.hash = 'roundWaiting';
                       }
                     }
                   }
@@ -3854,6 +3890,7 @@
                     if (!thisTableComplete) {
                       console.log('Our table no longer complete on reconnection, going to playing');
                       state.screen = 'playing';
+                      window.location.hash = 'playing';
                     }
                   }
                   
@@ -3870,6 +3907,7 @@
                   // If we were on gameSummary, go to roundEnd instead (can navigate back to summary from there)
                   if (state.screen === 'gameSummary') {
                     state.screen = 'roundEnd';
+                    window.location.hash = 'roundEnd';
                   }
                   
                   // Restart sync only on screens that need polling
