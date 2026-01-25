@@ -2133,10 +2133,29 @@
     }
 
     // Render functions
+    
+    // Define which screens require game data to be loaded
+    const SCREENS_REQUIRING_GAME = ['playing', 'roundWaiting', 'roundEnd', 'gameSummary', 'gameManagement'];
+    
     function render() {
       console.log('Render called, current screen:', state.screen);
       const app = document.getElementById('app');
       console.log('App element:', app);
+      
+      // Unified reconnection guard - handle screens that need game data
+      if (SCREENS_REQUIRING_GAME.includes(state.screen)) {
+        if (!state.gameId && !state.gameData) {
+          // No game at all - redirect to start
+          window.location.hash = 'start';
+          state.screen = 'start';
+          app.innerHTML = renderStartScreen();
+          return;
+        } else if (!state.gameData) {
+          // Have gameId but no data yet (reconnecting) - show loading
+          app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
+          return;
+        }
+      }
       
       switch (state.screen) {
         case 'start':
@@ -2156,61 +2175,19 @@
           app.innerHTML = renderJoinGameScreen();
           break;
         case 'tableSetup':
-          if (!state.gameId && !state.gameData) {
-            window.location.hash = 'start';
-            state.screen = 'start';
-            app.innerHTML = renderStartScreen();
-          } else if (!state.gameData) {
-            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
-          } else {
-            app.innerHTML = renderTableSetupScreen();
-          }
+          app.innerHTML = renderTableSetupScreen();
           break;
         case 'playing':
-          // Only redirect to start if we truly have no game (not just reconnecting)
-          if (!state.gameId && !state.gameData) {
-            window.location.hash = 'start';
-            state.screen = 'start';
-            app.innerHTML = renderStartScreen();
-          } else if (!state.gameData) {
-            // Have gameId but no data yet (reconnecting) - show loading
-            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
-          } else {
-            app.innerHTML = renderPlayingScreen();
-          }
+          app.innerHTML = renderPlayingScreen();
           break;
         case 'roundWaiting':
-          if (!state.gameId && !state.gameData) {
-            window.location.hash = 'start';
-            state.screen = 'start';
-            app.innerHTML = renderStartScreen();
-          } else if (!state.gameData) {
-            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
-          } else {
-            app.innerHTML = renderRoundWaitingScreen();
-          }
+          app.innerHTML = renderRoundWaitingScreen();
           break;
         case 'roundEnd':
-          if (!state.gameId && !state.gameData) {
-            window.location.hash = 'start';
-            state.screen = 'start';
-            app.innerHTML = renderStartScreen();
-          } else if (!state.gameData) {
-            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
-          } else {
-            app.innerHTML = renderRoundEndScreen();
-          }
+          app.innerHTML = renderRoundEndScreen();
           break;
         case 'gameSummary':
-          if (!state.gameId && !state.gameData) {
-            window.location.hash = 'start';
-            state.screen = 'start';
-            app.innerHTML = renderStartScreen();
-          } else if (!state.gameData) {
-            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Reconnecting...</h1></div></div>';
-          } else {
-            app.innerHTML = renderGameSummaryScreen();
-          }
+          app.innerHTML = renderGameSummaryScreen();
           break;
         case 'scoreConfirmation':
           app.innerHTML = renderScoreConfirmationScreen();
@@ -2219,19 +2196,7 @@
           app.innerHTML = renderAccessManagementScreen();
           break;
         case 'gameManagement':
-          // Only redirect to start if we truly have no game (not just reconnecting)
-          if (!state.gameId && !state.gameData) {
-            // No game at all - redirect
-            window.location.hash = 'start';
-            state.screen = 'start';
-            app.innerHTML = renderStartScreen();
-          } else if (!state.gameData) {
-            // Have gameId but no data yet (reconnecting) - show loading
-            app.innerHTML = '<div class="game-container"><div class="results-header"><h1 class="results-title">Loading...</h1></div></div>';
-          } else {
-            // Have game data - show management
-            app.innerHTML = renderGameManagementScreen();
-          }
+          app.innerHTML = renderGameManagementScreen();
           break;
       }
       
@@ -2711,7 +2676,11 @@
         state.scoreForm.board
       );
       
-      const currentPositions = getCurrentPlayerPositions();
+      // Safe to call even without gameData - will show position if player name not available
+      const currentPositions = state.gameData ? getCurrentPlayerPositions() : null;
+      const declarerDisplay = currentPositions 
+        ? currentPositions[state.scoreForm.declarer]
+        : state.scoreForm.declarer.toUpperCase();
       
       return `
         <div class="game-container">
@@ -2737,7 +2706,7 @@
               </div>
               <div style="font-size: 1rem; color: #b8b8d8; text-align: center; margin-top: 0.5rem;">
                 by ${state.scoreForm.declarer === 'north' || state.scoreForm.declarer === 'south' ? 'NS' : 'EW'}
-                (${currentPositions[state.scoreForm.declarer]})
+                (${declarerDisplay})
               </div>
               <div style="font-size: 1.1rem; color: #ffd700; text-align: center; margin-top: 0.75rem; font-weight: 600;">
                 ${(() => {
@@ -4077,12 +4046,21 @@
           if (state.gameId && (state.screen === 'playing' || state.screen === 'roundWaiting' || state.screen === 'roundEnd' || state.screen === 'tableSetup' || state.screen === 'gameSummary' || state.screen === 'gameManagement')) {
             // Build headers for fetch
             const headers = {};
-            if (state.adminToken && state.screen === 'gameManagement') {
-              headers['X-Admin-Token'] = state.adminToken;
+            if (state.screen === 'gameManagement') {
+              // Management mode - use management session
+              headers['X-Management-Session-Id'] = state.sessionId;
+            } else if (state.tableNumber) {
+              // Table mode - include table number
+              headers['X-Table-Number'] = state.tableNumber;
             }
             
+            // Add management flag if in management mode
+            const url = state.screen === 'gameManagement' 
+              ? `${API_URL}/games/${state.gameId}?management=true`
+              : `${API_URL}/games/${state.gameId}`;
+            
             // Fetch latest game data
-            fetch(`${API_URL}/games/${state.gameId}`, { headers })
+            fetch(url, { headers })
               .then(response => response.ok ? response.json() : null)
               .then(data => {
                 if (data) {
