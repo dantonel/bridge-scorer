@@ -2739,6 +2739,22 @@
                 by ${state.scoreForm.declarer === 'north' || state.scoreForm.declarer === 'south' ? 'NS' : 'EW'}
                 (${currentPositions[state.scoreForm.declarer]})
               </div>
+              <div style="font-size: 1.1rem; color: #ffd700; text-align: center; margin-top: 0.75rem; font-weight: 600;">
+                ${(() => {
+                  const contractTricks = state.scoreForm.level + 6;
+                  const tricksWon = state.scoreForm.tricksTaken;
+                  
+                  if (tricksWon >= contractTricks) {
+                    // Making - show total level made (tricks - 6)
+                    const levelMade = tricksWon - 6;
+                    return `Making ${levelMade}`;
+                  } else {
+                    // Down - show how many down
+                    const down = contractTricks - tricksWon;
+                    return `Down ${down}`;
+                  }
+                })()}
+              </div>
             </div>
             
             <!-- Score -->
