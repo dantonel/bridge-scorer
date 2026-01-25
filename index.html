@@ -1198,11 +1198,27 @@
     async function recordScore(e) {
       e.preventDefault();
       
-      if (!state.scoreForm.level || !state.scoreForm.strain || !state.scoreForm.declarer || state.scoreForm.result === null) {
+      if (!state.scoreForm.level || !state.scoreForm.strain || !state.scoreForm.declarer || state.scoreForm.tricksTaken === null) {
         // This shouldn't happen since button is disabled, but safety check
         return;
       }
 
+      // For regular tables (not management), show confirmation screen
+      if (!state.isManagementMode) {
+        changeScreen('scoreConfirmation');
+        return;
+      }
+
+      // Management mode: save directly (as before)
+      await saveScore();
+    }
+    
+    async function confirmAndSaveScore() {
+      await saveScore();
+      changeScreen('playing');
+    }
+    
+    async function saveScore() {
       const contract = buildContractString();
       const score = calculateScore(
         state.scoreForm.level, 
@@ -2207,6 +2223,9 @@
             app.innerHTML = renderGameSummaryScreen();
           }
           break;
+        case 'scoreConfirmation':
+          app.innerHTML = renderScoreConfirmationScreen();
+          break;
         case 'accessManagement':
           app.innerHTML = renderAccessManagementScreen();
           break;
@@ -2594,62 +2613,66 @@
                 <div class="form-group">
                   <label class="form-label">Result</label>
                   ${state.scoreForm.level ? `
-                    <div class="tricks-buttons">
+                    <div style="display: flex; gap: 1rem; align-items: start;">
+                      <div style="flex: 1;">
+                        <div class="tricks-buttons">
+                          ${(() => {
+                            const level = state.scoreForm.level;
+                            const buttons = [];
+                            
+                            // Down tricks: can go down from contract level to 0 tricks
+                            // For example: 7-level contract (13 tricks needed) can be down 1 through down 13
+                            const contractTricks = level + 6;
+                            for (let down = contractTricks; down >= 1; down--) {
+                              const tricks = contractTricks - down;
+                              buttons.push(`
+                                <button type="button" 
+                                        class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
+                                        onclick="setScoreFormTricks(${tricks})">
+                                  -${down}
+                                </button>
+                              `);
+                            }
+                            
+                            // Made tricks: contract level through 7 (making exactly through overtricks)
+                            for (let made = level; made <= 7; made++) {
+                              const tricks = made + 6;
+                              buttons.push(`
+                                <button type="button" 
+                                        class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
+                                        onclick="setScoreFormTricks(${tricks})">
+                                  ${made}
+                                </button>
+                              `);
+                            }
+                            
+                            return buttons.join('');
+                          })()}
+                        </div>
+                      </div>
                       ${(() => {
-                        const level = state.scoreForm.level;
-                        const buttons = [];
-                        
-                        // Down tricks: can go down from contract level to 0 tricks
-                        // For example: 7-level contract (13 tricks needed) can be down 1 through down 13
-                        const contractTricks = level + 6;
-                        for (let down = contractTricks; down >= 1; down--) {
-                          const tricks = contractTricks - down;
-                          buttons.push(`
-                            <button type="button" 
-                                    class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
-                                    onclick="setScoreFormTricks(${tricks})">
-                              -${down}
-                            </button>
-                          `);
+                        // Show score preview ONLY in management mode, positioned to the right
+                        if (state.isManagementMode && state.scoreForm.level && state.scoreForm.strain && state.scoreForm.declarer && state.scoreForm.tricksTaken !== null) {
+                          const score = calculateScore(
+                            state.scoreForm.level,
+                            state.scoreForm.strain,
+                            state.scoreForm.double,
+                            state.scoreForm.declarer,
+                            state.scoreForm.tricksTaken,
+                            state.scoreForm.board
+                          );
+                          return `
+                            <div style="min-width: 180px; padding: 1rem; background: rgba(255, 215, 0, 0.1); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 8px; text-align: center;">
+                              <div style="color: #ffd700; font-size: 0.85rem; margin-bottom: 0.5rem;">Score:</div>
+                              <div style="color: ${score >= 0 ? '#4caf50' : '#f44336'}; font-size: 1.8rem; font-weight: 700;">
+                                ${score >= 0 ? '+' : ''}${score}
+                              </div>
+                            </div>
+                          `;
                         }
-                        
-                        // Made tricks: contract level through 7 (making exactly through overtricks)
-                        for (let made = level; made <= 7; made++) {
-                          const tricks = made + 6;
-                          buttons.push(`
-                            <button type="button" 
-                                    class="tricks-btn ${state.scoreForm.tricksTaken === tricks ? 'selected' : ''}" 
-                                    onclick="setScoreFormTricks(${tricks})">
-                              ${made}
-                            </button>
-                          `);
-                        }
-                        
-                        return buttons.join('');
+                        return '';
                       })()}
                     </div>
-                    ${(() => {
-                      // Show score preview if contract and result are selected
-                      if (state.scoreForm.level && state.scoreForm.strain && state.scoreForm.declarer && state.scoreForm.tricksTaken !== null) {
-                        const score = calculateScore(
-                          state.scoreForm.level,
-                          state.scoreForm.strain,
-                          state.scoreForm.double,
-                          state.scoreForm.declarer,
-                          state.scoreForm.tricksTaken,
-                          state.scoreForm.board
-                        );
-                        return `
-                          <div style="margin-top: 1rem; padding: 1rem; background: rgba(255, 215, 0, 0.1); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 8px; text-align: center;">
-                            <div style="color: #ffd700; font-size: 0.9rem; margin-bottom: 0.25rem;">Score Preview:</div>
-                            <div style="color: ${score >= 0 ? '#4caf50' : '#f44336'}; font-size: 1.5rem; font-weight: 700;">
-                              ${score >= 0 ? '+' : ''}${score}
-                            </div>
-                          </div>
-                        `;
-                      }
-                      return '';
-                    })()}
                   ` : `
                     <div style="color: #888; font-style: italic; padding: 1rem; text-align: center;">
                       Select a contract level first
@@ -2683,6 +2706,76 @@
             <button class="secondary-button" onclick="changeScreen('gameSummary')">
               📊 View Summary
             </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderScoreConfirmationScreen() {
+      const contract = buildContractString();
+      const score = calculateScore(
+        state.scoreForm.level, 
+        state.scoreForm.strain, 
+        state.scoreForm.double, 
+        state.scoreForm.declarer, 
+        state.scoreForm.tricksTaken,
+        state.scoreForm.board
+      );
+      
+      const currentPositions = getCurrentRoundPositions();
+      
+      return `
+        <div class="game-container">
+          <div class="results-header">
+            <h1 class="results-title">Confirm Score</h1>
+            <p class="app-subtitle">Please verify this score is correct</p>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div style="max-width: 500px; margin: 0 auto;">
+            <!-- Board Number -->
+            <div style="background: rgba(255, 215, 0, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center;">
+              <div style="color: #ffd700; font-size: 1rem; margin-bottom: 0.5rem;">Board ${state.scoreForm.board}</div>
+              <div style="color: #e8e8e8; font-size: 0.9rem;">Round ${state.currentRound}</div>
+            </div>
+            
+            <!-- Contract -->
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+              <div style="color: #ffd700; font-size: 0.9rem; margin-bottom: 0.75rem; text-align: center;">Contract</div>
+              <div style="font-size: 2rem; font-weight: 700; text-align: center; color: #e8e8e8;">
+                ${contract}
+              </div>
+              <div style="font-size: 1rem; color: #b8b8d8; text-align: center; margin-top: 0.5rem;">
+                by ${state.scoreForm.declarer === 'N' || state.scoreForm.declarer === 'S' ? 'NS' : 'EW'}
+                (${currentPositions[state.scoreForm.declarer.toLowerCase()]})
+              </div>
+            </div>
+            
+            <!-- Score -->
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+              <div style="color: #ffd700; font-size: 0.9rem; margin-bottom: 0.75rem; text-align: center;">Score</div>
+              <div style="font-size: 2.5rem; font-weight: 700; text-align: center; color: ${score >= 0 ? '#4caf50' : '#f44336'};">
+                ${score >= 0 ? '+' : ''}${score}
+              </div>
+            </div>
+            
+            <!-- Confirmation Message -->
+            <div style="background: rgba(255, 215, 0, 0.1); border: 2px solid rgba(255, 215, 0, 0.3); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+              <p style="color: #ffd700; text-align: center; margin: 0; font-size: 0.95rem;">
+                ⚠️ Please confirm with EW that this score is correct before proceeding
+              </p>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 1rem;">
+              <button class="secondary-button" onclick="changeScreen('playing')" style="flex: 1;">
+                ← Go Back & Edit
+              </button>
+              <button class="primary-button" onclick="confirmAndSaveScore()" style="flex: 1;">
+                ✓ Confirm & Save
+              </button>
+            </div>
           </div>
         </div>
       `;
