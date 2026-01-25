@@ -4040,7 +4040,7 @@
           console.log('About to check reconnection. GameId:', state.gameId, 'Screen:', state.screen);
           
           // If we were in an active game, reconnect
-          if (state.gameId && (state.screen === 'playing' || state.screen === 'roundWaiting' || state.screen === 'roundEnd' || state.screen === 'tableSetup' || state.screen === 'gameSummary' || state.screen === 'gameManagement')) {
+          if (state.gameId && SCREENS_REQUIRING_GAME.includes(state.screen)) {
             // Build headers for fetch
             const headers = {};
             if (state.screen === 'gameManagement') {
