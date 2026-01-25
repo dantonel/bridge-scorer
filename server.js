@@ -102,19 +102,11 @@ export default async function handler(req, res) {
       
       if (gameJson) {
         const game = JSON.parse(gameJson);
-        const adminToken = req.headers['x-admin-token'] || url.searchParams.get('token');
         const tableNumber = req.headers['x-table-number'] || url.searchParams.get('table');
         const requestManagement = url.searchParams.get('management') === 'true';
         const managementSessionId = req.headers['x-management-session-id'];
         
-        if (adminToken) {
-          if (game.adminToken !== adminToken) {
-            sendJSON(res, 403, { error: 'Invalid admin token' });
-            return;
-          }
-          // Admin gets full game data
-          sendJSON(res, 200, game);
-        } else if (requestManagement) {
+        if (requestManagement) {
           // Trying to access management - check if it's locked
           console.log('Management access check:', {
             currentLock: game.managementSessionId,
@@ -127,13 +119,10 @@ export default async function handler(req, res) {
             return;
           }
           // Management is available or already owned by this session
-          // Don't expose admin token - management access is session-based only
-          const { adminToken: _, ...gameWithoutToken } = game;
-          sendJSON(res, 200, gameWithoutToken);
+          sendJSON(res, 200, game);
         } else {
-          // Non-admin: filter out current round scores from OTHER table
+          // Non-management: filter out current round scores from OTHER table
           const filteredGame = { ...game };
-          delete filteredGame.adminToken;
           
           // If tableNumber is provided, hide current round score VALUES from the OTHER table
           // but keep the fact that scores EXIST for round completion detection
@@ -204,23 +193,19 @@ export default async function handler(req, res) {
       const existingGame = JSON.parse(existingJson);
       
       // Check authorization for different types of updates
-      const adminToken = req.headers['x-admin-token'];
       const sessionId = req.headers['x-session-id'];
       
       // Check if advancing round (updating currentRound)
       if (updates.hasOwnProperty('currentRound')) {
-        // Require either: admin token OR valid player sessionId (from either table)
-        if (adminToken) {
-          if (existingGame.adminToken !== adminToken) {
-            sendJSON(res, 403, { error: 'Invalid admin token' });
-            return;
-          }
-        } else if (sessionId) {
-          // Check if sessionId matches either table
+        // Require valid player sessionId (from either table) OR management session
+        if (sessionId) {
+          // Check if sessionId matches either table OR management session
           const table1Match = existingGame.tables?.[1]?.sessionId === sessionId;
           const table2Match = existingGame.tables?.[2]?.sessionId === sessionId;
-          if (!table1Match && !table2Match) {
-            sendJSON(res, 403, { error: 'Not authorized to advance round - must be a player in this game' });
+          const managementMatch = existingGame.managementSessionId === sessionId;
+          
+          if (!table1Match && !table2Match && !managementMatch) {
+            sendJSON(res, 403, { error: 'Not authorized to advance round - must be a player or manager in this game' });
             return;
           }
         } else {
@@ -237,12 +222,11 @@ export default async function handler(req, res) {
           
           // Check if trying to clear sessionId (logout)
           if (tableUpdate.hasOwnProperty('sessionId') && tableUpdate.sessionId === null) {
-            // Allow if: has admin token OR has matching sessionId in header OR has management session
-            const hasAdminToken = adminToken && existingGame.adminToken === adminToken;
+            // Allow if: has matching sessionId in header OR has management session
             const hasTableSession = sessionId && existingTable?.sessionId === sessionId;
             const hasManagementSession = existingGame.managementSessionId && existingGame.managementSessionId === sessionId;
             
-            if (!hasAdminToken && !hasTableSession && !hasManagementSession) {
+            if (!hasTableSession && !hasManagementSession) {
               sendJSON(res, 403, { error: 'Invalid session - cannot unlock this table' });
               return;
             }
@@ -256,23 +240,21 @@ export default async function handler(req, res) {
               tableNumber: tableNum,
               existingTableSession,
               tableUpdateSessionId: tableUpdate.sessionId,
-              hasAdminToken: !!(adminToken && existingGame.adminToken === adminToken),
               hasManagementSession: !!(existingGame.managementSessionId && existingGame.managementSessionId === sessionId),
               managementSessionId: existingGame.managementSessionId,
               requestSessionId: sessionId
             });
             
-            // Allow if: admin token OR matching sessionId in update body OR management session
+            // Allow if: matching sessionId in update body OR management session
             if (existingTableSession && existingTableSession !== tableUpdate.sessionId) {
-              const hasAdminToken = adminToken && existingGame.adminToken === adminToken;
               const hasManagementSession = existingGame.managementSessionId && existingGame.managementSessionId === sessionId;
               
-              if (!hasAdminToken && !hasManagementSession) {
+              if (!hasManagementSession) {
                 console.log('Score update DENIED - no authorization');
                 sendJSON(res, 403, { error: 'Not authorized to update this table' });
                 return;
               }
-              console.log('Score update ALLOWED - authorized via', hasAdminToken ? 'admin token' : 'management session');
+              console.log('Score update ALLOWED - authorized via management session');
             }
           }
         }
@@ -291,13 +273,8 @@ export default async function handler(req, res) {
         
         // Releasing lock (null)
         if (requestedSessionId === null) {
-          // Allow if: has admin token OR has matching managementSessionId
-          if (adminToken) {
-            if (existingGame.adminToken !== adminToken) {
-              sendJSON(res, 403, { error: 'Invalid admin token' });
-              return;
-            }
-          } else if (sessionId !== currentLock) {
+          // Allow if: has matching managementSessionId
+          if (sessionId !== currentLock) {
             sendJSON(res, 403, { error: 'Cannot release management lock - not your session' });
             return;
           }

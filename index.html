@@ -847,7 +847,6 @@
       gameId: '',
       tableNumber: null,
       sessionId: Math.random().toString(36).substring(2, 15), // Unique session ID for this browser tab
-      adminToken: null, // Admin token for game management access
       isManagementMode: false, // Whether we're editing from management screen
       boardsPerRound: 4,
       showVPs: true, // Whether to display VPs in results
@@ -990,14 +989,12 @@
     async function createGame() {
       console.log('createGame called');
       const gameId = generateGameId();
-      const adminToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       
       console.log('Generated gameId:', gameId);
       console.log('API_URL:', API_URL);
       
       const gameData = {
         gameId,
-        adminToken,
         boardsPerRound: state.boardsPerRound,
         showVPs: state.showVPs,
         impBonus: state.impBonus,
@@ -1006,6 +1003,7 @@
           1: { players: {}, scores: {}, sessionId: null },
           2: { players: {}, scores: {}, sessionId: null }
         },
+        managementSessionId: state.sessionId, // Creator automatically gets management session
         created: Date.now()
       };
 
@@ -1034,11 +1032,8 @@
 
         state.gameId = gameId;
         saveLastGameId(gameId);
-        state.adminToken = adminToken;
-        state.gameData = gameData;
-        
-        // Store admin token in localStorage for this game
-        localStorage.setItem(`adminToken_${gameId}`, adminToken);
+        state.gameData = createdGame;
+        state.isManagementMode = true; // Creator is in management mode
         
         changeScreen('gameManagement');
       } catch (error) {
@@ -1257,15 +1252,11 @@
         partialUpdate.tables[state.tableNumber].sessionId = state.sessionId;
       }
       
-      // Build headers
-      const headers = { 'Content-Type': 'application/json' };
-      if (state.isManagementMode && state.adminToken) {
-        // Management with admin token
-        headers['X-Admin-Token'] = state.adminToken;
-      } else if (state.isManagementMode) {
-        // Management with session only (no admin token)
-        headers['X-Session-Id'] = state.sessionId;
-      }
+      // Always use session ID for authentication
+      const headers = { 
+        'Content-Type': 'application/json',
+        'X-Session-Id': state.sessionId
+      };
       
       // Use PATCH to merge this score without overwriting other table's data
       await fetch(`${API_URL}/games/${state.gameId}`, {
@@ -1531,14 +1522,8 @@
         
         const headers = { 'Content-Type': 'application/json' };
         
-        // If we have a sessionId, include it to prove we're a player
-        if (state.sessionId) {
-          headers['X-Session-Id'] = state.sessionId;
-        }
-        // Or if admin, use admin token
-        if (state.adminToken) {
-          headers['X-Admin-Token'] = state.adminToken;
-        }
+        // Always use session ID for authentication
+        headers['X-Session-Id'] = state.sessionId;
         
         await fetch(`${API_URL}/games/${state.gameId}`, {
           method: 'PATCH',
@@ -3417,7 +3402,6 @@
     async function refreshManagementView() {
       console.log('refreshManagementView called');
       console.log('gameId:', state.gameId);
-      console.log('adminToken:', state.adminToken);
       
       if (!state.gameId) {
         console.warn('Missing gameId, cannot refresh');
@@ -3427,18 +3411,10 @@
       try {
         console.log('Fetching game data...');
         
-        const headers = {};
-        if (state.adminToken) {
-          // Creator with admin token
-          headers['X-Admin-Token'] = state.adminToken;
-        } else {
-          // Management session only
-          headers['X-Management-Session-Id'] = state.sessionId;
-        }
-        
-        const url = state.adminToken 
-          ? `${API_URL}/games/${state.gameId}`
-          : `${API_URL}/games/${state.gameId}?management=true`;
+        const url = `${API_URL}/games/${state.gameId}?management=true`;
+        const headers = {
+          'X-Management-Session-Id': state.sessionId
+        };
         
         const response = await fetch(url, { headers });
         console.log('Response status:', response.status);
@@ -3489,14 +3465,9 @@
       try {
         // Clear the table lock by setting sessionId to null
         const headers = {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Session-Id': state.sessionId
         };
-        
-        if (state.adminToken) {
-          headers['X-Admin-Token'] = state.adminToken;
-        } else {
-          headers['X-Session-Id'] = state.sessionId;
-        }
         
         const clearLockUpdate = {
           tables: {
@@ -3557,16 +3528,11 @@
       }
       
       try {
-        // Delete the score using admin token or management session
+        // Delete the score using session ID
         const headers = {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Session-Id': state.sessionId
         };
-        
-        if (state.adminToken) {
-          headers['X-Admin-Token'] = state.adminToken;
-        } else {
-          headers['X-Session-Id'] = state.sessionId;
-        }
         
         const deleteUpdate = {
           tables: {
@@ -3699,7 +3665,6 @@
           gameId: '',
           tableNumber: null,
           sessionId: Math.random().toString(36).substring(2, 15),
-          adminToken: null,
           isManagementMode: false,
           boardsPerRound: 4,
           currentRound: 1,
@@ -4019,7 +3984,7 @@
           gameId: state.gameId,
           tableNumber: state.tableNumber,
           sessionId: state.sessionId,
-          adminToken: state.adminToken,  // Save admin token for reconnection
+          isManagementMode: state.isManagementMode,
           boardsPerRound: state.boardsPerRound,
           currentRound: state.currentRound,
           tablePlayers: state.tablePlayers,
@@ -4047,7 +4012,6 @@
           state.gameId = savedState.gameId || '';
           state.tableNumber = savedState.tableNumber || null;
           state.sessionId = savedState.sessionId || state.sessionId; // Restore to maintain table lock
-          state.adminToken = savedState.adminToken || null;  // Restore admin token
           state.isManagementMode = savedState.isManagementMode || false; // Restore management mode flag
           state.boardsPerRound = savedState.boardsPerRound || 4;
           state.currentRound = savedState.currentRound || 1;
