@@ -2100,12 +2100,15 @@
     function getMovementInstructions() {
       if (!state.tableNumber || !state.tablePlayers) return [];
       
+      // Get CURRENT positions for this round
+      const currentPositions = getCurrentRoundPositions();
+      
       const tableKey = `table${state.tableNumber}`;
       const instructions = [];
       
       ['north', 'south', 'east', 'west'].forEach(position => {
         const destination = movement[tableKey][position];
-        const playerName = state.tablePlayers[position];
+        const playerName = currentPositions[position]; // Use current round positions
         if (playerName) {
           if (destination.table === state.tableNumber && destination.position === position) {
             instructions.push(`${playerName} (${position[0].toUpperCase()}): Stay at Table ${state.tableNumber} ${position[0].toUpperCase()}`);
@@ -2625,6 +2628,28 @@
                         return buttons.join('');
                       })()}
                     </div>
+                    ${(() => {
+                      // Show score preview if contract and result are selected
+                      if (state.scoreForm.level && state.scoreForm.strain && state.scoreForm.declarer && state.scoreForm.tricksTaken !== null) {
+                        const score = calculateScore(
+                          state.scoreForm.level,
+                          state.scoreForm.strain,
+                          state.scoreForm.double,
+                          state.scoreForm.declarer,
+                          state.scoreForm.tricksTaken,
+                          state.scoreForm.board
+                        );
+                        return `
+                          <div style="margin-top: 1rem; padding: 1rem; background: rgba(255, 215, 0, 0.1); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 8px; text-align: center;">
+                            <div style="color: #ffd700; font-size: 0.9rem; margin-bottom: 0.25rem;">Score Preview:</div>
+                            <div style="color: ${score >= 0 ? '#4caf50' : '#f44336'}; font-size: 1.5rem; font-weight: 700;">
+                              ${score >= 0 ? '+' : ''}${score}
+                            </div>
+                          </div>
+                        `;
+                      }
+                      return '';
+                    })()}
                   ` : `
                     <div style="color: #888; font-style: italic; padding: 1rem; text-align: center;">
                       Select a contract level first
@@ -2633,7 +2658,7 @@
                 </div>
 
                 <button type="submit" class="submit-score-btn" 
-                        ${!state.scoreForm.strain || !state.scoreForm.declarer || state.scoreForm.result === null ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                        ${!state.scoreForm.strain || !state.scoreForm.declarer || state.scoreForm.tricksTaken === null ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
                   Record Score
                 </button>
                 ${state.isManagementMode ? `
@@ -2812,12 +2837,28 @@
       // Build round summaries
       const roundSummaries = [];
       
-      // Determine max round to show based on permissions
-      const maxRound = canViewFullSummary() ? state.currentRound : state.currentRound - 1;
+      // Show all rounds including current round
+      const maxRound = state.currentRound;
       
       for (let round = 1; round <= maxRound; round++) {
         const table1Scores = state.gameData.tables[1]?.scores?.[round] || {};
         const table2Scores = state.gameData.tables[2]?.scores?.[round] || {};
+        
+        // Check if current round is complete
+        const isCurrentRoundComplete = canViewFullSummary() || round < state.currentRound;
+        
+        // If current round is incomplete and we're a player, only show our table's scores
+        let filteredTable1Scores = table1Scores;
+        let filteredTable2Scores = table2Scores;
+        
+        if (!isCurrentRoundComplete && state.tableNumber) {
+          // Hide other table's scores
+          if (state.tableNumber === 1) {
+            filteredTable2Scores = {}; // Hide table 2
+          } else {
+            filteredTable1Scores = {}; // Hide table 1
+          }
+        }
         
         // Get player positions for this round
         const table1Positions = getPlayerPositionsForRound(1, round);
@@ -2833,8 +2874,8 @@
         // Get all boards for this round
         for (let i = 1; i <= state.boardsPerRound; i++) {
           const boardNum = (round - 1) * state.boardsPerRound + i;
-          const t1Score = table1Scores[boardNum];
-          const t2Score = table2Scores[boardNum];
+          const t1Score = filteredTable1Scores[boardNum];
+          const t2Score = filteredTable2Scores[boardNum];
           
           // Calculate IMPs
           let imps = 0;
@@ -2866,7 +2907,8 @@
           team2IMPs,
           team1VPs: vpResult.team1VPs,
           team2VPs: vpResult.team2VPs,
-          boards
+          boards,
+          isIncomplete: !isCurrentRoundComplete
         });
       }
       
@@ -2891,7 +2933,8 @@
             </div>
           ` : roundSummaries.map(summary => `
             <div class="leaderboard-card" style="margin-bottom: 1.5rem;">
-              <h2 class="leaderboard-title">Round ${summary.round}</h2>
+              <h2 class="leaderboard-title">Round ${summary.round}${summary.isIncomplete ? ' (In Progress)' : ''}</h2>
+              ${summary.isIncomplete ? `<div style="color: #ffd700; font-size: 0.9rem; text-align: center; margin-bottom: 1rem;">Showing your table's scores only</div>` : ''}
               
               <!-- Team Summary -->
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
@@ -2916,8 +2959,8 @@
                 <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px;">
                   <div style="color: #ffd700; font-weight: 600; margin-bottom: 0.75rem; text-align: center;">Team 2</div>
                   <div style="font-size: 0.9rem; color: #b8b8d8; margin-bottom: 0.5rem; text-align: center;">
-                    ${summary.table1Positions.east} & ${summary.table1Positions.west}<br>
-                    ${summary.table2Positions.north} & ${summary.table2Positions.south}
+                    ${summary.table2Positions.north} & ${summary.table2Positions.south}<br>
+                    ${summary.table1Positions.east} & ${summary.table1Positions.west}
                   </div>
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team2IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team2IMPs >= 0 ? '+' : ''}${summary.team2IMPs} IMPs
@@ -3153,8 +3196,8 @@
                 <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px;">
                   <div style="color: #ffd700; font-weight: 600; margin-bottom: 0.75rem; text-align: center;">Team 2</div>
                   <div style="font-size: 0.9rem; color: #b8b8d8; margin-bottom: 0.5rem; text-align: center;">
-                    ${summary.table1Positions.east} & ${summary.table1Positions.west}<br>
-                    ${summary.table2Positions.north} & ${summary.table2Positions.south}
+                    ${summary.table2Positions.north} & ${summary.table2Positions.south}<br>
+                    ${summary.table1Positions.east} & ${summary.table1Positions.west}
                   </div>
                   <div style="font-size: 1.3rem; font-weight: 700; text-align: center; color: ${summary.team2IMPs >= 0 ? '#4caf50' : '#f44336'};">
                     ${summary.team2IMPs >= 0 ? '+' : ''}${summary.team2IMPs} IMPs
