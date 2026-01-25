@@ -1260,7 +1260,11 @@
       // Build headers
       const headers = { 'Content-Type': 'application/json' };
       if (state.isManagementMode && state.adminToken) {
+        // Management with admin token
         headers['X-Admin-Token'] = state.adminToken;
+      } else if (state.isManagementMode) {
+        // Management with session only (no admin token)
+        headers['X-Session-Id'] = state.sessionId;
       }
       
       // Use PATCH to merge this score without overwriting other table's data
@@ -2117,7 +2121,7 @@
       if (!state.tableNumber || !state.tablePlayers) return [];
       
       // Get CURRENT positions for this round
-      const currentPositions = getCurrentRoundPositions();
+      const currentPositions = getCurrentPlayerPositions();
       
       const tableKey = `table${state.tableNumber}`;
       const instructions = [];
@@ -2722,7 +2726,7 @@
         state.scoreForm.board
       );
       
-      const currentPositions = getCurrentRoundPositions();
+      const currentPositions = getCurrentPlayerPositions();
       
       return `
         <div class="game-container">

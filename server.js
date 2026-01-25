@@ -252,15 +252,27 @@ export default async function handler(req, res) {
           if (tableUpdate.scores) {
             const existingTableSession = existingTable?.sessionId;
             
+            console.log('Score update authorization check:', {
+              tableNumber: tableNum,
+              existingTableSession,
+              tableUpdateSessionId: tableUpdate.sessionId,
+              hasAdminToken: !!(adminToken && existingGame.adminToken === adminToken),
+              hasManagementSession: !!(existingGame.managementSessionId && existingGame.managementSessionId === sessionId),
+              managementSessionId: existingGame.managementSessionId,
+              requestSessionId: sessionId
+            });
+            
             // Allow if: admin token OR matching sessionId in update body OR management session
             if (existingTableSession && existingTableSession !== tableUpdate.sessionId) {
               const hasAdminToken = adminToken && existingGame.adminToken === adminToken;
               const hasManagementSession = existingGame.managementSessionId && existingGame.managementSessionId === sessionId;
               
               if (!hasAdminToken && !hasManagementSession) {
+                console.log('Score update DENIED - no authorization');
                 sendJSON(res, 403, { error: 'Not authorized to update this table' });
                 return;
               }
+              console.log('Score update ALLOWED - authorized via', hasAdminToken ? 'admin token' : 'management session');
             }
           }
         }
