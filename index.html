@@ -2736,8 +2736,8 @@
                 ${contract}
               </div>
               <div style="font-size: 1rem; color: #b8b8d8; text-align: center; margin-top: 0.5rem;">
-                by ${state.scoreForm.declarer === 'N' || state.scoreForm.declarer === 'S' ? 'NS' : 'EW'}
-                (${currentPositions[state.scoreForm.declarer.toLowerCase()]})
+                by ${state.scoreForm.declarer === 'north' || state.scoreForm.declarer === 'south' ? 'NS' : 'EW'}
+                (${currentPositions[state.scoreForm.declarer]})
               </div>
             </div>
             
