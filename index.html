@@ -1210,7 +1210,7 @@
     
     async function confirmAndSaveScore() {
       await saveScore();
-      changeScreen('playing');
+      // saveScore() handles navigation (playing, roundWaiting, or gameManagement)
     }
     
     async function saveScore() {
