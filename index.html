@@ -2135,7 +2135,7 @@
     // Render functions
     
     // Define which screens require game data to be loaded
-    const SCREENS_REQUIRING_GAME = ['playing', 'roundWaiting', 'roundEnd', 'gameSummary', 'gameManagement'];
+    const SCREENS_REQUIRING_GAME = ['playing', 'roundWaiting', 'roundEnd', 'gameSummary', 'gameManagement', 'scoreConfirmation'];
     
     function render() {
       console.log('Render called, current screen:', state.screen);
@@ -2676,11 +2676,8 @@
         state.scoreForm.board
       );
       
-      // Safe to call even without gameData - will show position if player name not available
-      const currentPositions = state.gameData ? getCurrentPlayerPositions() : null;
-      const declarerDisplay = currentPositions 
-        ? currentPositions[state.scoreForm.declarer]
-        : state.scoreForm.declarer.toUpperCase();
+      // Get current player positions (gameData guaranteed to exist)
+      const currentPositions = getCurrentPlayerPositions();
       
       return `
         <div class="game-container">
@@ -2706,7 +2703,7 @@
               </div>
               <div style="font-size: 1rem; color: #b8b8d8; text-align: center; margin-top: 0.5rem;">
                 by ${state.scoreForm.declarer === 'north' || state.scoreForm.declarer === 'south' ? 'NS' : 'EW'}
-                (${declarerDisplay})
+                (${currentPositions[state.scoreForm.declarer]})
               </div>
               <div style="font-size: 1.1rem; color: #ffd700; text-align: center; margin-top: 0.75rem; font-weight: 600;">
                 ${(() => {
