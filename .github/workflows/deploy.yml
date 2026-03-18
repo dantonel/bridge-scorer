@@ -20,10 +20,14 @@ jobs:
         id: env
         run: |
           case "${{ github.ref_name }}" in
-            main)  echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT ;;
-            qa)    echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT ;;
-            claude) echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT ;;
-            *)     echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT ;;
+            claude)
+              echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT
+              echo "deployment=bridge-scorer-claude" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT
+              echo "deployment=bridge-scorer" >> $GITHUB_OUTPUT
+              ;;
           esac
       - name: Install OpenShift CLI
         uses: redhat-actions/openshift-tools-installer@v1
@@ -40,25 +44,24 @@ jobs:
       - name: Deploy app
         run: |
           oc project ${{ steps.env.outputs.namespace }}
-          
           oc apply -f - <<EOF
           apiVersion: apps/v1
           kind: Deployment
           metadata:
-            name: bridge-scorer
+            name: ${{ steps.env.outputs.deployment }}
           spec:
             replicas: 1
             selector:
               matchLabels:
-                app: bridge-scorer
+                app: ${{ steps.env.outputs.deployment }}
             template:
               metadata:
                 labels:
-                  app: bridge-scorer
+                  app: ${{ steps.env.outputs.deployment }}
               spec:
                 containers:
-                  - name: bridge-scorer
-                    image: image-registry.openshift-image-registry.svc:5000/${{ steps.env.outputs.namespace }}/bridge-scorer:latest
+                  - name: ${{ steps.env.outputs.deployment }}
+                    image: image-registry.openshift-image-registry.svc:5000/${{ steps.env.outputs.namespace }}/${{ steps.env.outputs.deployment }}:latest
                     env:
                       - name: REDIS_URL
                         valueFrom:
@@ -68,8 +71,6 @@ jobs:
                     ports:
                       - containerPort: 3000
           EOF
-
-          oc start-build bridge-scorer --from-dir=. --follow --wait
-
+          oc start-build ${{ steps.env.outputs.deployment }} --from-dir=. --follow --wait
       - name: Verify rollout
-        run: oc rollout status deployment/bridge-scorer
+        run: oc rollout status deployment/${{ steps.env.outputs.deployment }}
