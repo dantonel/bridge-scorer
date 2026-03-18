@@ -67,7 +67,7 @@ function isObject(item) {
   return item && typeof item === 'object' && !Array.isArray(item);
 }
 
-export default async function handler(req, res) {
+export async function handler(req, res) {
   try {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -86,10 +86,10 @@ export default async function handler(req, res) {
     // GET /api/version - Return build info
     if (req.method === 'GET' && url.pathname === '/api/version') {
       sendJSON(res, 200, {
-        buildId: process.env.VERCEL_GIT_COMMIT_SHA || 'dev',
-        deploymentUrl: process.env.VERCEL_URL || 'localhost',
-        environment: process.env.VERCEL_ENV || 'development',
-        gitBranch: process.env.VERCEL_GIT_COMMIT_REF || 'local'
+        buildId: process.env.GIT_COMMIT_SHA || 'dev',
+        deploymentUrl: process.env.APP_URL || 'localhost',
+        environment: process.env.NODE_ENV || 'development',
+        gitBranch: process.env.GIT_BRANCH || 'local'
       });
       return;
     }

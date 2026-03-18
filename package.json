@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "Bridge Individual IMP Scoring App",
   "type": "module",
-  "main": "server.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node app.js",
+    "start:vercel": "node server.js"
   },
   "dependencies": {
+    "express": "^4.18.0",
     "redis": "^4.6.0"
   },
   "engines": {
