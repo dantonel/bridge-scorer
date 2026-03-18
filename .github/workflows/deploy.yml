@@ -20,12 +20,11 @@ jobs:
         id: env
         run: |
           case "${{ github.ref_name }}" in
-            main)  echo "namespace=bridge-scorer-prod" >> $GITHUB_OUTPUT ;;
-            qa)    echo "namespace=bridge-scorer-qa" >> $GITHUB_OUTPUT ;;
-            claude) echo "namespace=bridge-scorer-claude" >> $GITHUB_OUTPUT ;;
-            *)     echo "namespace=bridge-scorer-dev" >> $GITHUB_OUTPUT ;;
+            main)  echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT ;;
+            qa)    echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT ;;
+            claude) echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT ;;
+            *)     echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT ;;
           esac
-
       - name: Install OpenShift CLI
         uses: redhat-actions/openshift-tools-installer@v1
         with:
