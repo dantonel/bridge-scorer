@@ -1,0 +1,76 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - dev
+      - qa
+      - main
+      - claude
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set target environment
+        id: env
+        run: |
+          case "${{ github.ref_name }}" in
+            main)  echo "namespace=bridge-scorer-prod" >> $GITHUB_OUTPUT ;;
+            qa)    echo "namespace=bridge-scorer-qa" >> $GITHUB_OUTPUT ;;
+            claude) echo "namespace=bridge-scorer-claude" >> $GITHUB_OUTPUT ;;
+            *)     echo "namespace=bridge-scorer-dev" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Install OpenShift CLI
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          oc: latest
+
+      - name: Log in to OpenShift
+        uses: redhat-actions/oc-login@v1
+        with:
+          openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
+          openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
+          namespace: ${{ steps.env.outputs.namespace }}
+
+      - name: Deploy app
+        run: |
+          oc project ${{ steps.env.outputs.namespace }}
+          
+          oc apply -f - <<EOF
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: bridge-scorer
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: bridge-scorer
+            template:
+              metadata:
+                labels:
+                  app: bridge-scorer
+              spec:
+                containers:
+                  - name: bridge-scorer
+                    image: image-registry.openshift-image-registry.svc:5000/${{ steps.env.outputs.namespace }}/bridge-scorer:latest
+                    env:
+                      - name: REDIS_URL
+                        valueFrom:
+                          secretKeyRef:
+                            name: redis-secret
+                            key: redis-url
+                    ports:
+                      - containerPort: 3000
+          EOF
+
+          oc start-build bridge-scorer --from-dir=. --follow --wait
+
+      - name: Verify rollout
+        run: oc rollout status deployment/bridge-scorer
