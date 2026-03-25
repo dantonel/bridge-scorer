@@ -3189,7 +3189,8 @@
                 🔄 Refresh
               </button>
               <label style="display: flex; align-items: center; gap: 0.5rem; color: #b8b8d8; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
-                <input type="checkbox" id="auto-refresh-checkbox" onchange="toggleAutoRefresh(this.checked)" 
+                <input type="checkbox" id="auto-refresh-checkbox" onchange="toggleAutoRefresh(this.checked)"
+                       ${managementRefreshInterval ? 'checked' : ''}
                        style="cursor: pointer; width: 18px; height: 18px; flex-shrink: 0;">
                 Auto-refresh (15s)
               </label>
