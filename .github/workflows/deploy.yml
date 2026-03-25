@@ -6,7 +6,7 @@ on:
       - dev
       - qa
       - main
-      - claude
+      - 'claude/**'
 
 jobs:
   deploy:
@@ -20,7 +20,7 @@ jobs:
         id: env
         run: |
           case "${{ github.ref_name }}" in
-            claude)
+            claude/*)
               echo "namespace=antonellitechsolutio-dev" >> $GITHUB_OUTPUT
               echo "deployment=bridge-scorer-claude" >> $GITHUB_OUTPUT
               ;;
