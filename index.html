@@ -1295,9 +1295,17 @@
         return;
       }
       
-      // Otherwise, just advance to next board in current round
+      // Otherwise, scan forward (with wraparound) to find first unscored board
+      const firstBoard = (state.currentRound - 1) * state.boardsPerRound + 1;
+      const lastBoard = state.currentRound * state.boardsPerRound;
+      const currentBoard = parseInt(state.scoreForm.board);
+      let nextBoard = currentBoard;
+      for (let i = 0; i < state.boardsPerRound; i++) {
+        nextBoard = nextBoard >= lastBoard ? firstBoard : nextBoard + 1;
+        if (!thisTableScores[nextBoard]) break;
+      }
       state.scoreForm = {
-        board: Math.min(parseInt(state.scoreForm.board) + 1, state.boardsPerRound * state.currentRound),
+        board: nextBoard,
         level: null,
         strain: null,
         double: '',
