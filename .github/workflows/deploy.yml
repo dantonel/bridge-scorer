@@ -68,6 +68,10 @@ jobs:
                           secretKeyRef:
                             name: redis-secret
                             key: redis-url
+                      - name: GIT_COMMIT_SHA
+                        value: "${{ github.sha }}"
+                      - name: GIT_BRANCH
+                        value: "${{ github.ref_name }}"
                     ports:
                       - containerPort: 3000
           EOF
