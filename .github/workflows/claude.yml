@@ -42,7 +42,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.app-token.outputs.token }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Bash(gh issue create *),Bash(gh pr create *)"'
+          claude_args: '--allowedTools "Bash(gh issue create *),Bash(gh pr create *),Bash(npm install)"'
           base_branch: dev
 
           # This is an optional setting that allows Claude to read CI results on PRs
