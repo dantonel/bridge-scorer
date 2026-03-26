@@ -6,7 +6,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "start:vercel": "node server.js"
+    "start:vercel": "node server.js",
+    "test": "node --test --test-force-exit"
   },
   "dependencies": {
     "express": "^4.18.0",
