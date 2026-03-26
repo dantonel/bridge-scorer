@@ -46,9 +46,24 @@ Data is persisted in Redis.
 - `APP_URL` — Public URL of the deployment
 
 ## Testing
-- No automated tests yet — manual testing required
-- When fixing a bug, describe in the PR how you verified the fix works
+- **Write tests before making code changes** — follow a test-first (TDD) approach for all new functionality and bug fixes
+- New functionality: write unit or integration tests first, then implement the code to make them pass
+- Bug fixes: write a regression test that reproduces the bug first, then fix it
+- Use Node's built-in `node:test` runner (see `test/` directory for existing tests)
+- Pure logic (e.g. `lib/scoring.js`) goes in unit tests; route/Redis behaviour goes in integration tests
+- Every new API route must have at least one integration test
+- Tests run against a real Redis instance — no mocking
+- Run `npm test` to execute the test suite
 - Do not break existing API contracts — the frontend depends on exact response shapes
+
+## Dependency Management
+- After adding or changing npm dependencies in `package.json`, always run `npm install` to update `package-lock.json`
+- Commit both `package.json` and `package-lock.json` together — CI uses `npm ci` which requires them to be in sync
+
+## README
+- Keep `README.md` up to date whenever you make changes that affect: features, API routes, environment variables, deployment, local development setup, or architecture
+- Update the README in the same PR as the code change — never leave them out of sync
+- The README is user-facing; write it for someone setting up or using the app, not for Claude
 
 ## Things to Be Careful About
 - Redis connection is lazy and shared — don't create multiple clients
