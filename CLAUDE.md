@@ -56,6 +56,11 @@ Data is persisted in Redis.
 - Run `npm test` to execute the test suite
 - Do not break existing API contracts — the frontend depends on exact response shapes
 
+## README
+- Keep `README.md` up to date whenever you make changes that affect: features, API routes, environment variables, deployment, local development setup, or architecture
+- Update the README in the same PR as the code change — never leave them out of sync
+- The README is user-facing; write it for someone setting up or using the app, not for Claude
+
 ## Things to Be Careful About
 - Redis connection is lazy and shared — don't create multiple clients
 - Game state uses deepMerge for PATCH updates — understand this before modifying update logic
