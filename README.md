@@ -11,19 +11,57 @@ A web application for scoring bridge games using Individual IMP scoring for 8 pl
 - Individual leaderboard
 - Round-by-round game summary
 
-## Deployment
+## Architecture
 
-This app is deployed on Vercel. To deploy updates:
-
-1. Make changes to the code
-2. Commit to GitHub: `git add . && git commit -m "Update description"`
-3. Push: `git push`
-4. Vercel will automatically deploy the changes
+- `app.js` — Express server entry point, listens on `PORT` (default 3000)
+- `server.js` — All API route handlers
+- `index.html` — Entire frontend (vanilla JS, no framework)
+- Redis — Sole data store (`REDIS_URL` environment variable)
 
 ## Local Development
 
+### Prerequisites
+
+- Node.js
+- A running Redis instance
+
+### Setup
+
 ```bash
-node server.js
+npm install
 ```
 
-Then open `http://localhost:3001` in your browser.
+Set the required environment variable:
+
+```bash
+export REDIS_URL=redis://localhost:6379
+```
+
+Start the server:
+
+```bash
+node app.js
+```
+
+Then open `http://localhost:3000` in your browser.
+
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `REDIS_URL` | Yes | Redis connection string |
+| `PORT` | No | Server port (default: 3000) |
+| `NODE_ENV` | No | Environment name |
+
+## Deployment
+
+The app runs on OpenShift. Branches map to environments as follows:
+
+| Branch | Environment |
+|---|---|
+| `main` | Production (Vercel) |
+| `dev` | Integration (OpenShift) |
+| `qa` | Pre-prod (OpenShift) |
+| `claude` | Review (OpenShift, auto-deployed) |
+
+To deploy: open a PR from your branch to `dev`. Merging to `dev` triggers a deployment to the integration environment.

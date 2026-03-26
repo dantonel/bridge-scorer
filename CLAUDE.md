@@ -60,6 +60,11 @@ Data is persisted in Redis.
 - After adding or changing npm dependencies in `package.json`, always run `npm install` to update `package-lock.json`
 - Commit both `package.json` and `package-lock.json` together — CI uses `npm ci` which requires them to be in sync
 
+## README
+- Keep `README.md` up to date whenever you make changes that affect: features, API routes, environment variables, deployment, local development setup, or architecture
+- Update the README in the same PR as the code change — never leave them out of sync
+- The README is user-facing; write it for someone setting up or using the app, not for Claude
+
 ## Things to Be Careful About
 - Redis connection is lazy and shared — don't create multiple clients
 - Game state uses deepMerge for PATCH updates — understand this before modifying update logic
