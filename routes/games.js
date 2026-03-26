@@ -40,7 +40,7 @@ export async function getVersion(req, res) {
 }
 
 export async function getGame(req, res) {
-  const gameId = req.url.split('/')[3];
+  const gameId = req.url.split('/')[3].split('?')[0];
   console.log('Getting game:', gameId);
   const client = await getRedisClient();
   const gameJson = await client.get(`game:${gameId}`);
@@ -118,7 +118,7 @@ export async function createGame(req, res) {
 }
 
 export async function patchGame(req, res) {
-  const gameId = req.url.split('/')[3];
+  const gameId = req.url.split('/')[3].split('?')[0];
   const updates = req.body;
   console.log('Updating game:', gameId);
 
@@ -268,7 +268,7 @@ export async function patchGame(req, res) {
 }
 
 export async function putGame(req, res) {
-  const gameId = req.url.split('/')[3];
+  const gameId = req.url.split('/')[3].split('?')[0];
   const gameData = req.body;
   console.log('Replacing game:', gameId);
 
