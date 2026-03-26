@@ -46,8 +46,12 @@ Data is persisted in Redis.
 - `APP_URL` — Public URL of the deployment
 
 ## Testing
-- No automated tests yet — manual testing required
-- When fixing a bug, describe in the PR how you verified the fix works
+- Always write tests alongside code changes — new functionality gets unit or integration tests in the same PR
+- Bug fixes get a regression test that would have caught the bug
+- Use Node's built-in `node:test` runner (`npm test` runs all tests)
+- Pure logic (e.g. `lib/scoring.js`) goes in unit tests; route/Redis behaviour goes in integration tests
+- Every new API route gets at least one integration test
+- Tests run against a real Redis instance — no mocking
 - Do not break existing API contracts — the frontend depends on exact response shapes
 
 ## Things to Be Careful About
