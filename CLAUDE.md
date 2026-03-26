@@ -56,6 +56,10 @@ Data is persisted in Redis.
 - Run `npm test` to execute the test suite
 - Do not break existing API contracts — the frontend depends on exact response shapes
 
+## Dependency Management
+- After adding or changing npm dependencies in `package.json`, always run `npm install` to update `package-lock.json`
+- Commit both `package.json` and `package-lock.json` together — CI uses `npm ci` which requires them to be in sync
+
 ## README
 - Keep `README.md` up to date whenever you make changes that affect: features, API routes, environment variables, deployment, local development setup, or architecture
 - Update the README in the same PR as the code change — never leave them out of sync
