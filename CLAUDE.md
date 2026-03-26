@@ -56,6 +56,10 @@ Data is persisted in Redis.
 - Run `npm test` to execute the test suite
 - Do not break existing API contracts — the frontend depends on exact response shapes
 
+## Dependency Management
+- After adding or changing npm dependencies in `package.json`, always run `npm install` to update `package-lock.json`
+- Commit both `package.json` and `package-lock.json` together — CI uses `npm ci` which requires them to be in sync
+
 ## Things to Be Careful About
 - Redis connection is lazy and shared — don't create multiple clients
 - Game state uses deepMerge for PATCH updates — understand this before modifying update logic
