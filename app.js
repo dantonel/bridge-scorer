@@ -1,18 +1,18 @@
 import express from 'express';
-import { existsSync } from 'fs';
+import { existsSync } from 'node:fs';
 import { handler } from './server.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve from Vite's build output if available, otherwise fall back to project root
-const staticRoot = existsSync('./dist/index.html') ? 'dist' : '.';
+// Use Vite build output if available, otherwise fall back to source root
+const staticRoot = existsSync('./dist/index.html') ? './dist' : '.';
 console.log(`Serving static files from: ${staticRoot}`);
 
 // Parse JSON request bodies
 app.use(express.json());
 
-// Serve static files
+// Serve static files (Vite dist/ if built, otherwise source root)
 app.use(express.static(staticRoot));
 
 // Route all /api requests to your existing handler

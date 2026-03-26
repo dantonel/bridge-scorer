@@ -6,12 +6,8 @@ export default defineConfig({
     outDir: 'dist',
   },
   server: {
-    // Proxy API calls to Express during Vite dev server
     proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
+      '/api': 'http://localhost:3000',
     },
   },
 });
