@@ -204,7 +204,7 @@ describe('calculateIMPs', () => {
   test('negative differences return negative IMPs', () => {
     assert.equal(calculateIMPs(-50), -2);
     assert.equal(calculateIMPs(-420), -9);
-    assert.equal(calculateIMPs(-600), -11);
+    assert.equal(calculateIMPs(-600), -12);
   });
 
   test('large differences cap at 24 IMPs', () => {
