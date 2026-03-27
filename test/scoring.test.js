@@ -124,8 +124,13 @@ describe('calculateScore', () => {
     });
 
     test('1NT down 3 doubled by NS, board 1 (not vulnerable)', () => {
-      // Doubled NV, 3 tricks: 300 + 300 = 500. (300 + (3-2)*300)
+      // Doubled NV: 1st=100, 2nd=200, 3rd=200 → 500
       assert.equal(calculateScore(1, 'NT', 'X', 'north', 4, 1), -500);
+    });
+
+    test('1NT down 4 doubled by NS, board 1 (not vulnerable)', () => {
+      // Doubled NV: 1st=100, 2nd=200, 3rd=200, 4th=300 → 800
+      assert.equal(calculateScore(1, 'NT', 'X', 'north', 3, 1), -800);
     });
 
     test('1NT down 1 doubled by NS, board 2 (NS vulnerable)', () => {
@@ -143,9 +148,34 @@ describe('calculateScore', () => {
       assert.equal(calculateScore(1, 'NT', 'XX', 'north', 6, 1), -200);
     });
 
+    test('1NT down 2 redoubled by NS, board 1 (not vulnerable)', () => {
+      // Redoubled NV: 1st=200, 2nd=400 → 600
+      assert.equal(calculateScore(1, 'NT', 'XX', 'north', 5, 1), -600);
+    });
+
+    test('1NT down 3 redoubled by NS, board 1 (not vulnerable)', () => {
+      // Redoubled NV: 1st=200, 2nd=400, 3rd=400 → 1000
+      assert.equal(calculateScore(1, 'NT', 'XX', 'north', 4, 1), -1000);
+    });
+
+    test('1NT down 4 redoubled by NS, board 1 (not vulnerable)', () => {
+      // Redoubled NV: 1st=200, 2nd=400, 3rd=400, 4th=600 → 1600
+      assert.equal(calculateScore(1, 'NT', 'XX', 'north', 3, 1), -1600);
+    });
+
     test('1NT down 1 redoubled by NS, board 2 (NS vulnerable)', () => {
       // Redoubled vul, 1 trick: 400.
       assert.equal(calculateScore(1, 'NT', 'XX', 'north', 6, 2), -400);
+    });
+
+    test('1NT down 2 redoubled by NS, board 2 (NS vulnerable)', () => {
+      // Redoubled vul: 1st=400, 2nd=600 → 1000
+      assert.equal(calculateScore(1, 'NT', 'XX', 'north', 5, 2), -1000);
+    });
+
+    test('1NT down 3 doubled by NS, board 2 (NS vulnerable)', () => {
+      // Doubled vul: 1st=200, 2nd=300, 3rd=300 → 800
+      assert.equal(calculateScore(1, 'NT', 'X', 'north', 4, 2), -800);
     });
 
     test('1NT down 1 by EW, board 1 (not vulnerable)', () => {
