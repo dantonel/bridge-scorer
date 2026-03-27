@@ -16,10 +16,11 @@ function gameId() {
 }
 
 async function api(path, options = {}) {
+  const { headers: extraHeaders, body, ...rest } = options;
   return fetch(`${baseUrl}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-    body: options.body ? JSON.stringify(options.body) : undefined
+    headers: { 'Content-Type': 'application/json', ...extraHeaders },
+    ...rest,
+    body: body ? JSON.stringify(body) : undefined
   });
 }
 
